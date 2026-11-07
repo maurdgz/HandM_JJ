@@ -154,6 +154,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Apellidos")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Area")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -163,6 +168,10 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DocumentoIdentidad")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -175,6 +184,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DocumentoIdentidad")
+                        .IsUnique();
 
                     b.HasIndex("UsuarioId")
                         .IsUnique();
@@ -523,6 +535,7 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
+                        .IsUnique()
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")

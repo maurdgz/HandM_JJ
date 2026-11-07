@@ -22,7 +22,7 @@ def check(base_url, authenticated):
             page.goto(base_url + "/swagger/index.html")
             page.wait_for_function("typeof window.importNetSwaggerRequest === 'function' && window.ui")
             page.locator(".opblock").first.wait_for()
-            assert page.locator(".opblock").count() == 10
+            assert page.locator(".opblock").count() >= 10
             assert page.locator('.opblock-summary-path[data-path="/api/categorias"]').count() == 2
             assert page.locator('.opblock-summary-path[data-path="/api/productos"]').count() == 2
             blocked = page.evaluate("""async () => {
@@ -89,6 +89,37 @@ def check(base_url, authenticated):
                 execute("DELETE", "/api/categorias/{id}", 409, identifier=categoria)
                 execute("DELETE", "/api/productos/{id}", 204, identifier=producto)
                 execute("DELETE", "/api/categorias/{id}", 204, identifier=categoria)
+                execute("GET", "/api/empleados", 200)
+                stage = "empleados MVC registro"
+                page.goto(base_url + "/empleados/crear")
+                documento = "BR" + unique[:12].upper()
+                fields = {"Nombre": "Persona", "Apellidos": "Navegador", "DocumentoIdentidad": documento,
+                          "Email": unique + "@example.test", "Telefono": "+51987654321", "Cargo": "Vendedor", "Area": "Comercial",
+                          "Password": "Temp!aA1" + uuid.uuid4().hex}
+                for field, value in fields.items():
+                    page.locator(f'input[name="{field}"]').fill(value)
+                page.locator("#role-Vendedor").check()
+                page.get_by_role("button", name="Guardar empleado", exact=True).click()
+                page.wait_for_url(re.compile(r"/empleados$"))
+                row = page.locator("tbody tr").filter(has_text=documento)
+                assert row.count() == 1
+                checks += 1
+                stage = "empleados MVC edicion"
+                row.get_by_role("link", name="Editar", exact=True).click()
+                page.locator('input[name="Apellidos"]').fill("Editado")
+                page.locator("#role-Vendedor").uncheck()
+                page.locator("#role-Almacenero").check()
+                page.get_by_role("button", name="Guardar empleado", exact=True).click()
+                page.wait_for_url(re.compile(r"/empleados$"))
+                row = page.locator("tbody tr").filter(has_text=documento)
+                assert "Editado" in row.inner_text() and "Almacenero" in row.inner_text()
+                checks += 1
+                stage = "empleados MVC desactivacion"
+                with page.expect_navigation():
+                    row.get_by_role("button", name="Desactivar", exact=True).click()
+                saved = page.evaluate("async doc => (await fetch('/api/empleados?busqueda=' + encodeURIComponent(doc))).json()", documento)
+                assert len(saved) == 1 and saved[0]["activo"] is False
+                checks += 1
                 page.goto(base_url + "/")
                 stage = "logout"
                 page.get_by_role("button", name="Cerrar sesión").click()

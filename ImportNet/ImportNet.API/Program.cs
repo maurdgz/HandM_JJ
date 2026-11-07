@@ -23,10 +23,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o => {
     o.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo {
         Title = "ImportNet API", Version = "v1",
-        Description = "Catálogo protegido por roles y cookies de Identity. " +
+        Description = "Catálogo y empleados protegidos por roles y cookies de Identity. " +
             "[Iniciar sesión](/cuenta/login?returnUrl=%2Fswagger) en este mismo navegador. " +
             "Swagger envía automáticamente el token CSRF en POST, PUT y DELETE. " +
-            "Administrador y Almacenero pueden modificar; Vendedor solo consulta."
+            "Catálogo: Administrador/Almacenero modifican, Vendedor consulta. Empleados y roles: solo Administrador."
     });
     o.DocInclusionPredicate((_, description) => description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true);
 });

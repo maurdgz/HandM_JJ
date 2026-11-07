@@ -1,5 +1,7 @@
 # Decisiones — 06/11/2026
 
+Actualización 07/11: empleados y roles usan un contrato específico para guardar cuenta y empleado atómicamente, autorización en los casos de uso y bloqueo transaccional PostgreSQL para conservar al último Administrador activo. Estado activo reside en Empleado; correo/teléfono y credencial residen en Identity. Nuevos perfiles obligatorios, perfiles antiguos conservados sin inventar documentos. Ver `DIA-01-EMPLEADOS.md`.
+
 - Se usa exclusivamente .NET 10 por instrucción explícita del propietario, que reemplaza el texto académico previo de .NET 8. La alineación del documento académico con .NET 10 queda para coordinación con el equipo/docente. No se implementa una versión alternativa en .NET 8.
 - EF Core e Identity EF 10.0.11, Npgsql EF 10.0.3, MediatR 12.5.0 y Swashbuckle 10.3.1, con versiones fijadas y restore verificado. Referencias de paquetes: https://www.nuget.org/packages/MediatR/12.5.0 y https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL/10.0.3.
 - API -> Application + Infrastructure; Infrastructure -> Application + Domain; Application -> Domain; Domain no tiene referencias de proyecto ni paquetes externos. Tests es un proyecto de verificación adicional a las cuatro capas.

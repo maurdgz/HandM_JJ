@@ -1,11 +1,12 @@
 namespace ImportNet.Domain.Entities;
 
-// Operational aggregates are mapped for the next iteration; no stock or sales write API is exposed yet.
 public sealed class Empleado
 {
     public int Id { get; set; }
     public string UsuarioId { get; set; } = "";
     public string Nombre { get; set; } = "";
+    public string Apellidos { get; set; } = "";
+    public string? DocumentoIdentidad { get; set; }
     public string Cargo { get; set; } = "";
     public string Area { get; set; } = "";
     public bool Activo { get; set; } = true;

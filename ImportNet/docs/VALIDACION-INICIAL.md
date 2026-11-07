@@ -1,5 +1,7 @@
 # Validación de PostgreSQL y Swagger
 
+> Registro histórico del 06/11/2026. La limitación de conexión que se describe aquí quedó resuelta el 07/11/2026: ver `DIA-01-EMPLEADOS.md` para migraciones aplicadas e integración real verificada.
+
 ## PostgreSQL: pendiente de secreto local
 
 No se encontró `ConnectionStrings:ImportNet` en el almacén User Secrets `ImportNet-local-2026`, ni una conexión equivalente en el entorno. No se han inspeccionado las tablas ni el historial real de la base y no se ha aplicado InitialCreate. No se han eliminado datos ni ejecutado cambios sobre PostgreSQL.

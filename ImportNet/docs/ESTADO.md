@@ -1,4 +1,10 @@
-# Estado real — jornada 06/11/2026 (America/Lima)
+# Estado actual — 07/11/2026 (America/Lima)
+
+Gestión de empleados, perfiles y roles implementada. PostgreSQL local integrado: InitialCreate y EmployeeProfiles aplicadas tras inspeccionar la base vacía; ninguna migración pendiente. Pasaron los casos esenciales y la integración real de los tres roles. Detalle y primer acceso seguro: `DIA-01-EMPLEADOS.md`.
+
+Suite completa: 31 aprobadas, cero fallidas/omitidas (PostgreSQL y Chrome habilitados). Build sin errores ni advertencias; auditoría NuGet sin vulnerabilidades reportadas. Las cuentas de prueba se revirtieron; el propietario debe crear su administrador persistente con `scripts/Crear-Administrador.ps1`.
+
+## Registro histórico del 06/11/2026
 
 Validación adicional de Swagger/PostgreSQL: ver `VALIDACION-INICIAL.md`. Se mantiene pendiente la conexión PostgreSQL por falta de User Secrets. El documento distingue el HTTP real, el navegador y SQLite de las pruebas PostgreSQL aún no ejecutadas.
 

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ImportNet.Application.Security;
+using ImportNet.Application.UseCases.Empleados;
 namespace ImportNet.Infrastructure;
 
 public static class ServiceRegistrationExtensions
@@ -15,11 +17,15 @@ public static class ServiceRegistrationExtensions
         services.AddDbContext<AppDbContext>(o => o.UseNpgsql(config.GetConnectionString("ImportNet")
             ?? "Host=localhost;Database=ImportNet;Username=postgres"));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUsuarioActual, UsuarioActual>();
+        services.AddScoped<IAdministracionEmpleados, AdministracionEmpleados>();
         services.AddIdentity<ApplicationUser, IdentityRole>(o => {
             o.Password.RequiredLength = 12;
             o.User.RequireUniqueEmail = true;
             o.Lockout.MaxFailedAccessAttempts = 5;
-        }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+        }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders().AddSignInManager<EmpleadoSignInManager>();
+        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
         services.ConfigureApplicationCookie(o => {
             o.LoginPath = "/cuenta/login";
             o.AccessDeniedPath = "/cuenta/denegado";

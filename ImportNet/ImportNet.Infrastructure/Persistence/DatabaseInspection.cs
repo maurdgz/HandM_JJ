@@ -31,8 +31,12 @@ public static class DatabaseInspection
         var tables = new List<string>();
         await using (var reader = await command.ExecuteReaderAsync())
             while (await reader.ReadAsync()) tables.Add(reader.GetString(0));
-        var applied = (await db.Database.GetAppliedMigrationsAsync()).ToArray();
+        var applied = tables.Contains("public.__EFMigrationsHistory")
+            ? (await db.Database.GetAppliedMigrationsAsync()).ToArray() : Array.Empty<string>();
         var pending = db.Database.GetMigrations().Except(applied).ToArray();
-        Console.WriteLine(JsonSerializer.Serialize(new { Database = database, User = user, Tables = tables, AppliedMigrations = applied, PendingMigrations = pending }, new JsonSerializerOptions { WriteIndented = true }));
+        long? userCount = tables.Contains("public.AspNetUsers") ? await db.Users.LongCountAsync() : null;
+        long? employeeCount = tables.Contains("public.Empleado") ? await db.Set<ImportNet.Domain.Entities.Empleado>().LongCountAsync() : null;
+        Console.WriteLine(JsonSerializer.Serialize(new { Database = database, User = user, Tables = tables, AppliedMigrations = applied,
+            PendingMigrations = pending, Users = userCount, Employees = employeeCount }, new JsonSerializerOptions { WriteIndented = true }));
     }
 }

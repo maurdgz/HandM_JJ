@@ -25,6 +25,10 @@
         <p class="text-uppercase small text-secondary fw-bold">Operaciones</p>
         <nav class="nav flex-column gap-2">
             <a class="nav-link" href="/">Inicio</a>
+            @if (User.IsInRole("Administrador"))
+            {
+                <a class="nav-link" href="/empleados">Empleados</a>
+            }
             @if (User.IsInRole("Administrador") || User.IsInRole("Almacenero") || User.IsInRole("Vendedor"))
             {
                 <a class="nav-link" href="/categorias">Categorías</a>

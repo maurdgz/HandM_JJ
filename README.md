@@ -52,23 +52,18 @@ dotnet ef database update --project ImportNet.Infrastructure --startup-project I
 dotnet ef migrations add NombreDelCambio --project ImportNet.Infrastructure --startup-project ImportNet.API --output-dir Persistence/Migrations
 ```
 
-No se ha aplicado esta migración a PostgreSQL en esta ejecución: faltan secretos de conexión. Las pruebas usan una base SQLite transitoria independiente; no demuestran funcionamiento ni concurrencia en PostgreSQL.
+El 07/11/2026 se inspeccionó la base PostgreSQL ImportNet: estaba vacía. Se aplicaron InitialCreate y EmployeeProfiles sin eliminar datos. También se ejecutaron pruebas reales con Npgsql/Kestrel, separadas de las pruebas SQLite. Consulta `docs/DIA-01-EMPLEADOS.md`.
 
 ## Alta explícita del administrador
 
-Después de aplicar la migración, configura por user-secrets `Bootstrap:Email`, `Bootstrap:Nombre` y `Bootstrap:Password`. La contraseña debe tener al menos 12 caracteres, mayúscula, minúscula, número y símbolo. Elige una nueva contraseña local y nunca la guardes en archivos del proyecto.
+Después de aplicar las migraciones, crea el primer administrador con tus datos reales y una contraseña local. Este script pide nombres, apellidos, documento, correo, teléfono y contraseña oculta; guarda los valores en User Secrets, ejecuta el bootstrap de desarrollo y retira Bootstrap:Password al terminar. La contraseña necesita al menos 12 caracteres, mayúscula, minúscula, número y símbolo.
 
 ```powershell
-dotnet user-secrets set "Bootstrap:Email" "TU_CORREO_ADMIN" --project ImportNet.API
-dotnet user-secrets set "Bootstrap:Nombre" "TU_NOMBRE_ADMIN" --project ImportNet.API
-dotnet user-secrets set "Bootstrap:Password" "TU_CLAVE_LOCAL" --project ImportNet.API
-$env:ASPNETCORE_ENVIRONMENT = "Development"
-dotnet run --project ImportNet.API -- --bootstrap-admin
-dotnet user-secrets remove "Bootstrap:Password" --project ImportNet.API
-dotnet run --project ImportNet.API
+powershell -ExecutionPolicy Bypass -File ./scripts/Crear-Administrador.ps1
+dotnet run --project ImportNet.API/ImportNet.API.csproj --launch-profile ImportNet
 ```
 
-El bootstrap solo funciona en desarrollo, exige migraciones al día, crea los tres roles y asocia un Empleado al administrador dentro de una transacción. No cambia ni promueve cuentas existentes. No hay registro público ni contraseñas predeterminadas. CRUD administrativo de empleados pendiente.
+El bootstrap solo funciona en desarrollo, exige migraciones al día, crea los tres roles y asocia un Empleado al administrador dentro de una transacción. No cambia ni promueve cuentas existentes. No hay registro público ni contraseñas predeterminadas. Los siguientes empleados y sus roles se administran desde `/empleados`, exclusivamente por un Administrador.
 
 Arranque desde terminal o configuración equivalente en Rider:
 
@@ -88,6 +83,11 @@ Frontend: http://localhost:5080/ (redirige al login sin sesión). Login: http://
 | GET | `/api/productos`, `/api/productos/{id}` | Administrador, Almacenero, Vendedor |
 | POST | `/api/productos` | Administrador, Almacenero |
 | PUT, DELETE | `/api/productos/{id}` | Administrador, Almacenero |
+| GET, POST | `/api/empleados` | Administrador |
+| GET, PUT | `/api/empleados/{id}` | Administrador |
+| PATCH | `/api/empleados/{id}/estado` | Administrador |
+| PUT | `/api/empleados/{id}/roles` | Administrador |
+| GET | `/api/empleados/roles` | Administrador |
 
 Crear responde 201 con Location e id; editar/eliminar, 204. Validación 400; sin sesión 401; rol insuficiente 403; inexistente 404; duplicados/referencias 409. Errores de negocio usan ProblemDetails, sin detalles internos.
 
@@ -115,7 +115,7 @@ Las vistas están en `/`, `/categorias`, `/productos`, `/categorias/crear`, `/pr
 
 ## Alcance
 
-Catálogo, login y MVC inicial funcionan en las pruebas automatizadas. Inventario y ventas tienen modelo relacional inicial, pero no tienen endpoints ni transacciones de stock implementadas. No se ofrecen ventas sin protección de stock. Reportes, exportaciones y administración de empleados quedan pendientes. Consulta `docs/ESTADO.md`, `docs/DECISIONES.md` y `docs/PRUEBA-MANUAL.md`.
+Catálogo, empleados, perfiles, login y MVC funcionan en las pruebas automatizadas. La administración incluye búsqueda, alta con cuenta Identity, edición, roles y activación/desactivación lógica; no hay borrado físico de empleados. Inventario y ventas conservan su modelo inicial, sin endpoints ni transacciones de stock implementadas. Reportes y exportaciones quedan para siguientes jornadas. Consulta `docs/ESTADO.md`, `docs/DIA-01-EMPLEADOS.md` y `docs/DECISIONES.md`.
 
 El inventario completo de archivos está en `docs/ARCHIVOS.md` dentro de la carpeta de código `ImportNet`.
 

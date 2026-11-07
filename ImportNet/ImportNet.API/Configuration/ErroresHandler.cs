@@ -1,6 +1,7 @@
 using ImportNet.Domain.Entities;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using ImportNet.Application.Security;
 namespace ImportNet.API.Configuration;
 
 internal sealed class ErroresHandler(IProblemDetailsService problems) : IExceptionHandler
@@ -11,6 +12,7 @@ internal sealed class ErroresHandler(IProblemDetailsService problems) : IExcepti
             ReglaNegocioException => 400,
             NoEncontradoException => 404,
             ConflictoException => 409,
+            AccesoNoPermitidoException acceso => acceso.Status,
             _ => 500
         };
         context.Response.StatusCode = status;

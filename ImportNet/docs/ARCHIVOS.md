@@ -1,6 +1,6 @@
-# Archivos de ImportNet
+# Archivos de ImportNet — 07/11/2026
 
-Inventario de archivos versionados y preparados para esta etapa, relativo a la raíz de la solución. No incluye bin, obj, credenciales ni herramientas de navegador instaladas temporalmente fuera del repositorio.
+Inventario relativo a la raiz de la solucion. Incluye empleados, perfiles, permisos y sus migraciones. Credenciales y herramientas temporales no forman parte del repositorio.
 
 - .gitignore
 - ImportNet.sln
@@ -8,12 +8,15 @@ Inventario de archivos versionados y preparados para esta etapa, relativo a la r
 - ImportNet/Directory.Build.props
 - ImportNet/ImportNet.API/Configuration/ErroresHandler.cs
 - ImportNet/ImportNet.API/Controllers/Api/CategoriasController.cs
+- ImportNet/ImportNet.API/Controllers/Api/EmpleadosController.cs
 - ImportNet/ImportNet.API/Controllers/Api/ProductosController.cs
 - ImportNet/ImportNet.API/Controllers/Web/CategoriasController.cs
 - ImportNet/ImportNet.API/Controllers/Web/CuentaController.cs
+- ImportNet/ImportNet.API/Controllers/Web/EmpleadosAdminController.cs
 - ImportNet/ImportNet.API/Controllers/Web/InicioController.cs
 - ImportNet/ImportNet.API/Controllers/Web/ProductosController.cs
 - ImportNet/ImportNet.API/ImportNet.API.csproj
+- ImportNet/ImportNet.API/Models/EmpleadoForm.cs
 - ImportNet/ImportNet.API/Models/Formularios.cs
 - ImportNet/ImportNet.API/Program.cs
 - ImportNet/ImportNet.API/Properties/launchSettings.json
@@ -21,6 +24,8 @@ Inventario de archivos versionados y preparados para esta etapa, relativo a la r
 - ImportNet/ImportNet.API/Views/Categorias/Index.cshtml
 - ImportNet/ImportNet.API/Views/Cuenta/Denegado.cshtml
 - ImportNet/ImportNet.API/Views/Cuenta/Login.cshtml
+- ImportNet/ImportNet.API/Views/EmpleadosAdmin/Editar.cshtml
+- ImportNet/ImportNet.API/Views/EmpleadosAdmin/Index.cshtml
 - ImportNet/ImportNet.API/Views/Inicio/Index.cshtml
 - ImportNet/ImportNet.API/Views/Productos/Editar.cshtml
 - ImportNet/ImportNet.API/Views/Productos/Index.cshtml
@@ -33,12 +38,20 @@ Inventario de archivos versionados y preparados para esta etapa, relativo a la r
 - ImportNet/ImportNet.API/wwwroot/lib/bootstrap/LICENSE
 - ImportNet/ImportNet.API/wwwroot/lib/bootstrap/bootstrap.min.css
 - ImportNet/ImportNet.Application/ImportNet.Application.csproj
+- ImportNet/ImportNet.Application/Security/Autorizacion.cs
 - ImportNet/ImportNet.Application/ServiceRegistrationExtensions.cs
 - ImportNet/ImportNet.Application/UseCases/Categorias/Commands/CreateCategoriaCommand.cs
 - ImportNet/ImportNet.Application/UseCases/Categorias/Commands/DeleteCategoriaCommand.cs
 - ImportNet/ImportNet.Application/UseCases/Categorias/Commands/UpdateCategoriaCommand.cs
 - ImportNet/ImportNet.Application/UseCases/Categorias/Queries/GetAllCategoriasQuery.cs
 - ImportNet/ImportNet.Application/UseCases/Categorias/Queries/GetCategoriaByIdQuery.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/Commands/AsignarRolesEmpleadoCommand.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/Commands/CambiarEstadoEmpleadoCommand.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/Commands/CreateEmpleadoCommand.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/Commands/UpdateEmpleadoCommand.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/EmpleadoDatos.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/Queries/GetAllEmpleadosQuery.cs
+- ImportNet/ImportNet.Application/UseCases/Empleados/Queries/GetEmpleadoByIdQuery.cs
 - ImportNet/ImportNet.Application/UseCases/Productos/Commands/CreateProductoCommand.cs
 - ImportNet/ImportNet.Application/UseCases/Productos/Commands/DeleteProductoCommand.cs
 - ImportNet/ImportNet.Application/UseCases/Productos/Commands/UpdateProductoCommand.cs
@@ -49,7 +62,10 @@ Inventario de archivos versionados y preparados para esta etapa, relativo a la r
 - ImportNet/ImportNet.Domain/ImportNet.Domain.csproj
 - ImportNet/ImportNet.Domain/Interfaces/Persistencia.cs
 - ImportNet/ImportNet.Infrastructure/Identity/AdminBootstrapper.cs
+- ImportNet/ImportNet.Infrastructure/Identity/AdministracionEmpleados.cs
 - ImportNet/ImportNet.Infrastructure/Identity/ApplicationUser.cs
+- ImportNet/ImportNet.Infrastructure/Identity/EmpleadoSignInManager.cs
+- ImportNet/ImportNet.Infrastructure/Identity/UsuarioActual.cs
 - ImportNet/ImportNet.Infrastructure/ImportNet.Infrastructure.csproj
 - ImportNet/ImportNet.Infrastructure/Persistence/AppDbContext.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/AppDbContextFactory.cs
@@ -57,11 +73,14 @@ Inventario de archivos versionados y preparados para esta etapa, relativo a la r
 - ImportNet/ImportNet.Infrastructure/Persistence/DatabaseInspection.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/Migrations/20261107010635_InitialCreate.Designer.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/Migrations/20261107010635_InitialCreate.cs
+- ImportNet/ImportNet.Infrastructure/Persistence/Migrations/20261107151357_EmployeeProfiles.Designer.cs
+- ImportNet/ImportNet.Infrastructure/Persistence/Migrations/20261107151357_EmployeeProfiles.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/Migrations/AppDbContextModelSnapshot.cs
 - ImportNet/ImportNet.Infrastructure/Repositories/UnitOfWork.cs
 - ImportNet/ImportNet.Infrastructure/ServiceRegistrationExtensions.cs
 - ImportNet/ImportNet.Tests/BrowserVerification.cs
 - ImportNet/ImportNet.Tests/CatalogoTests.cs
+- ImportNet/ImportNet.Tests/EmpleadosTests.cs
 - ImportNet/ImportNet.Tests/ImportNet.Tests.csproj
 - ImportNet/ImportNet.Tests/PostgreSqlTests.cs
 - ImportNet/ImportNet.Tests/SmokeTests.cs
@@ -71,10 +90,13 @@ Inventario de archivos versionados y preparados para esta etapa, relativo a la r
 - ImportNet/README.md
 - ImportNet/docs/ARCHIVOS.md
 - ImportNet/docs/DECISIONES.md
+- ImportNet/docs/DIA-01-EMPLEADOS.md
 - ImportNet/docs/ESTADO.md
+- ImportNet/docs/EmployeeProfiles.sql
 - ImportNet/docs/InitialCreate.sql
 - ImportNet/docs/PRUEBA-MANUAL.md
 - ImportNet/docs/VALIDACION-INICIAL.md
 - ImportNet/dotnet-tools.json
 - ImportNet/scripts/Configurar-Conexion.ps1
+- ImportNet/scripts/Crear-Administrador.ps1
 - README.md

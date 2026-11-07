@@ -21,8 +21,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.ToTable("Empleado");
             e.HasIndex(x => x.UsuarioId).IsUnique();
             e.Property(x => x.UsuarioId).HasMaxLength(450);
+            e.Property(x => x.Apellidos).HasMaxLength(100);
+            e.Property(x => x.DocumentoIdentidad).HasMaxLength(20);
+            e.HasIndex(x => x.DocumentoIdentidad).IsUnique();
             e.HasOne<ApplicationUser>().WithOne().HasForeignKey<Empleado>(x => x.UsuarioId);
         });
+        b.Entity<ApplicationUser>().HasIndex(x => x.NormalizedEmail).HasDatabaseName("EmailIndex").IsUnique();
         b.Entity<Almacen>().ToTable("Almacen");
         b.Entity<Inventario>(e => {
             e.ToTable("Inventario", t => t.HasCheckConstraint("CK_Inventario_Cantidad", "\"Cantidad\" >= 0"));

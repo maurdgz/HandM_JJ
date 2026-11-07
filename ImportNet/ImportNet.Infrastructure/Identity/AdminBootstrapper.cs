@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ImportNet.Application.UseCases.Empleados;
 
 namespace ImportNet.Infrastructure.Identity;
 
@@ -20,18 +21,22 @@ public static class AdminBootstrapper
         var nombre = config["Bootstrap:Nombre"];
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(nombre))
             throw new InvalidOperationException("Configure Bootstrap:Email, Bootstrap:Nombre y Bootstrap:Password mediante secretos.");
+        var datos = EmpleadoReglas.Validar(new EmpleadoDatos(nombre, config["Bootstrap:Apellidos"] ?? "",
+            config["Bootstrap:DocumentoIdentidad"] ?? "", email, config["Bootstrap:Telefono"] ?? "", "Administrador", "Administración"));
         if (await db.Database.GetPendingMigrationsAsync() is var pending && pending.Any())
             throw new InvalidOperationException("Aplique primero las migraciones revisadas.");
         // Existing accounts are never silently promoted or given a new password.
-        if (await users.FindByEmailAsync(email) != null)
+        if (await users.FindByEmailAsync(datos.Email) != null)
             throw new InvalidOperationException("La cuenta ya existe. El bootstrap no modifica cuentas existentes.");
         await using var tx = await db.Database.BeginTransactionAsync();
+        if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(480071126)");
         foreach (var role in new[] { "Administrador", "Vendedor", "Almacenero" })
             if (!await roles.RoleExistsAsync(role)) Exigir(await roles.CreateAsync(new IdentityRole(role)));
-        var user = new ApplicationUser { UserName = email, Email = email };
+        var user = new ApplicationUser { UserName = datos.Email, Email = datos.Email, PhoneNumber = datos.Telefono };
         Exigir(await users.CreateAsync(user, password));
         Exigir(await users.AddToRoleAsync(user, "Administrador"));
-        db.Set<Empleado>().Add(new Empleado { UsuarioId = user.Id, Nombre = Reglas.Texto(nombre, 200, "Nombre"), Cargo = "Administrador", Area = "Administración" });
+        db.Set<Empleado>().Add(new Empleado { UsuarioId = user.Id, Nombre = datos.Nombre, Apellidos = datos.Apellidos,
+            DocumentoIdentidad = datos.DocumentoIdentidad, Cargo = datos.Cargo, Area = datos.Area });
         await db.SaveChangesAsync();
         await tx.CommitAsync();
     }

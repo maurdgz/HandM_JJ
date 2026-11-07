@@ -10,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using Xunit;
+using ImportNet.Application.UseCases.Empleados;
+using ImportNet.Application.UseCases.Empleados.Commands;
 
 namespace ImportNet.Tests;
 
@@ -26,6 +28,7 @@ internal sealed class PostgreSqlFactory : WebApplicationFactory<Program>
 {
     private readonly NpgsqlConnection connection;
     private readonly NpgsqlTransaction transaction;
+    private bool disposed;
 
     public PostgreSqlFactory()
     {
@@ -59,6 +62,8 @@ internal sealed class PostgreSqlFactory : WebApplicationFactory<Program>
 
     protected override void Dispose(bool disposing)
     {
+        if (disposed) return;
+        disposed = true;
         try { base.Dispose(disposing); }
         finally
         {
@@ -85,6 +90,28 @@ public sealed class PostgreSqlTests
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/productos")).StatusCode);
         var csrf = await client.GetFromJsonAsync<CsrfResponse>("/cuenta/csrf");
         client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf!.Token);
+        if (role == "Administrador")
+        {
+            var profiles = (await client.GetFromJsonAsync<List<EmpleadoDto>>("/api/empleados"))!;
+            if (profiles.Count(e => e.Activo && e.Roles.Contains("Administrador")) == 1)
+            {
+                var current = profiles.Single(e => e.Email == testEmail);
+                Assert.Equal(HttpStatusCode.Conflict, (await client.PatchAsJsonAsync($"/api/empleados/{current.Id}/estado", new { activo = false })).StatusCode);
+                Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync($"/api/empleados/{current.Id}/roles", new { roles = new[] { "Vendedor" } })).StatusCode);
+            }
+            var token = Guid.NewGuid().ToString("N");
+            var command = new CreateEmpleadoCommand(new EmpleadoDatos("Empleado", "PostgreSQL", "PG" + token[..12].ToUpperInvariant(),
+                $"{token}@example.test", "+51987654321", "Vendedor", "Comercial"), "Test!aA1" + Guid.NewGuid().ToString("N"), true, ["Vendedor"]);
+            var registered = await client.PostAsJsonAsync("/api/empleados", command);
+            Assert.Equal(HttpStatusCode.Created, registered.StatusCode);
+            var empleadoId = (await registered.Content.ReadFromJsonAsync<IdResponse>())!.Id;
+            Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/empleados/{empleadoId}", new UpdateEmpleadoCommand(empleadoId,
+                command.Datos with { Cargo = "Almacenero" }, true, ["Almacenero"]))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await client.PatchAsJsonAsync($"/api/empleados/{empleadoId}/estado", new { activo = false })).StatusCode);
+            var saved = await client.GetFromJsonAsync<EmpleadoDto>($"/api/empleados/{empleadoId}");
+            Assert.False(saved!.Activo); Assert.Contains("Almacenero", saved.Roles);
+        }
+        else Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/empleados")).StatusCode);
         var unique = Guid.NewGuid().ToString("N");
         var categoria = new { nombre = $"Verificacion-{unique}" };
         var response = await client.PostAsJsonAsync("/api/categorias", categoria);
