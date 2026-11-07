@@ -88,10 +88,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             fk.DeleteBehavior = DeleteBehavior.Restrict;
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken ct = default)
     {
         ValidarInmutabilidad();
-        return base.SaveChangesAsync(ct);
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, ct);
     }
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

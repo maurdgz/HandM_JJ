@@ -109,6 +109,27 @@ public sealed class CatalogoTests
         Assert.Throws<ReglaNegocioException>(() => f.Db.SaveChanges());
     }
     [Fact]
+    public async Task Movimiento_InmutabilidadCubreSobrecargaAsync()
+    {
+        using var f = new ApplicationFixture();
+        var movimiento = new MovimientoInventario { Id = 1, Cantidad = 2 };
+        f.Db.Attach(movimiento); movimiento.Cantidad = 3;
+        await Assert.ThrowsAsync<ReglaNegocioException>(() => f.Db.SaveChangesAsync(true));
+        await Assert.ThrowsAsync<ReglaNegocioException>(() => f.Db.SaveChangesAsync());
+    }
+    [Fact]
+    public async Task Producto_NoSeEliminaConRelacionProveedor()
+    {
+        using var f = new ApplicationFixture();
+        var categoria = await f.Mediator.Send(new CreateCategoriaCommand("Accesorios"));
+        var producto = await f.Mediator.Send(CrearProducto(categoria));
+        var proveedor = new Proveedor { Nombre = "Proveedor Corea", Pais = "Corea del Sur", Tipo = TipoProveedor.Internacional, Contacto = "Comercial" };
+        f.Db.Add(proveedor); await f.Db.SaveChangesAsync();
+        f.Db.Add(new ProveedorProducto { ProveedorId = proveedor.Id, ProductoId = producto });
+        await f.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<ConflictoException>(() => f.Mediator.Send(new DeleteProductoCommand(producto)));
+    }
+    [Fact]
     public void Orden_ValidaTransicionesYNoPermiteAnularDosVeces()
     {
         var orden = new OrdenVenta();

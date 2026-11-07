@@ -12,10 +12,22 @@
 ## Evidencia
 
 - Restore y build ejecutados con SDK 10.0.400. Build: 0 errores, 0 advertencias tras actualizar Swagger por advertencia de seguridad de una dependencia anterior.
-- 17 pruebas correctas: handlers de catálogo, restricciones relacionales, magnitudes, transiciones, inmutabilidad, arranque HTTP/Swagger, login/logout, CRUD API, guardado MVC, permisos y antiforgery.
+- 21 pruebas correctas: handlers de catálogo, restricciones relacionales, magnitudes, transiciones, inmutabilidad (incluidas sobrecargas async), arranque HTTP/Swagger, login/logout, CRUD API, formularios MVC completos de productos, permisos de Vendedor/Almacenero, ProblemDetails y antiforgery. Se comprueba el bloqueo de borrado tanto por inventario como por relación con proveedor.
 - Se detectó y corrigió un fallo de duplicados Unicode en la primera ejecución. Se repitió la suite satisfactoriamente.
 - Servicio local PostgreSQL 18 en ejecución. Sin ConnectionStrings__ImportNet ni secretos existentes del nuevo host. No se inspeccionó ni modificó el contenido de ImportNet y no se aplicó la migración.
-- GitHub autentica como maurdgz con permiso de push. El propietario corrigió explícitamente el correo a mauricio.rodriguez@tecsup.edu.pe; se configura solo en este repositorio antes del primer commit, sin modificar la identidad global.
+- GitHub autentica como maurdgz con permiso de push. El propietario corrigió explícitamente el correo a mauricio.rodriguez@tecsup.edu.pe; se configuró solo en este repositorio antes del primer commit, sin modificar la identidad global. La API de GitHub confirmó que el correo corregido está verificado.
+
+## Esquema generado, aún no aplicado
+
+Migración `20261107010635_InitialCreate`. Tablas de dominio: Categoria, Producto, Empleado, Almacen, Inventario, MovimientoInventario, Proveedor, ProveedorProducto, Cliente, OrdenVenta y DetalleOrdenVenta. Identity: AspNetUsers, AspNetRoles, AspNetRoleClaims, AspNetUserClaims, AspNetUserLogins, AspNetUserRoles y AspNetUserTokens. EF mantiene además __EFMigrationsHistory.
+
+## Historial publicado
+
+- `8c197ad`: capas, dominio y persistencia inicial.
+- `33bd2aa`: catálogo, host API/MVC y autenticación.
+- `783b598`: pruebas y documentación reproducible.
+
+Los tres commits se publicaron mediante `git push -u origin main`, sin force push. La ampliación posterior de pruebas y la corrección de inmutabilidad se registran en el siguiente commit; consultar `git log` para su hash definitivo. Autor: maurdgz, correo mauricio.rodriguez@tecsup.edu.pe. Fechas reales de la jornada en zona -05:00.
 
 ## Pendiente
 

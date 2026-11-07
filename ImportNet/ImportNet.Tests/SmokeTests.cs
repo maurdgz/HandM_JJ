@@ -71,6 +71,65 @@ public sealed class SmokeTests
         client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf!.Token);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/categorias", new { nombre = "Prohibido" })).StatusCode);
     }
+    [Fact]
+    public async Task Almacenero_FormularioProductoGuardaEditaYPresentaErrores()
+    {
+        using var factory = new SmokeFactory();
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false });
+        factory.InitializeSchema();
+        await Login(factory, client, "Almacenero");
+        var categoriaForm = await client.GetStringAsync("/categorias/crear");
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/categorias/guardar", Form(new() {
+            ["Nombre"] = "Accesorios", ["__RequestVerificationToken"] = Token(categoriaForm)
+        }))).StatusCode);
+        var categorias = await client.GetFromJsonAsync<List<IdResponse>>("/api/categorias");
+        var categoria = categorias!.Single().Id;
+        var productForm = await client.GetStringAsync("/productos/crear");
+        Assert.Contains("Accesorios", productForm);
+        var fields = new Dictionary<string,string> {
+            ["Id"] = "0", ["Codigo"] = "mvc-1", ["Nombre"] = "Producto MVC", ["UnidadMedida"] = "Unidad",
+            ["Peso"] = "0", ["PrecioUsd"] = "9.50", ["PartidaArancelaria"] = "854442", ["CategoriaId"] = categoria.ToString(),
+            ["StockMinimo"] = "2", ["__RequestVerificationToken"] = Token(productForm)
+        };
+        var invalid = await client.PostAsync("/productos/guardar", Form(fields));
+        Assert.Equal(HttpStatusCode.OK, invalid.StatusCode);
+        Assert.Contains("validation-summary-errors", await invalid.Content.ReadAsStringAsync());
+        Assert.Empty((await client.GetFromJsonAsync<List<IdResponse>>("/api/productos"))!);
+        fields["Peso"] = "0.125";
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/productos/guardar", Form(fields))).StatusCode);
+        var producto = (await client.GetFromJsonAsync<List<IdResponse>>("/api/productos"))!.Single().Id;
+        var editForm = await client.GetStringAsync($"/productos/{producto}/editar");
+        fields["Id"] = producto.ToString(); fields["Nombre"] = "Producto editado";
+        fields["__RequestVerificationToken"] = Token(editForm);
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/productos/guardar", Form(fields))).StatusCode);
+        Assert.Contains("Producto editado", await client.GetStringAsync("/productos"));
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync($"/productos/{producto}/eliminar", Form(new() { ["__RequestVerificationToken"] = Token(editForm) }))).StatusCode);
+        Assert.Empty((await client.GetFromJsonAsync<List<IdResponse>>("/api/productos"))!);
+    }
+    [Fact]
+    public async Task Api_ValidaEntradaYDevuelveProblemDetailsSeguro()
+    {
+        using var factory = new SmokeFactory();
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false });
+        factory.InitializeSchema();
+        await Login(factory, client, "Administrador");
+        var csrf = await client.GetFromJsonAsync<CsrfResponse>("/cuenta/csrf");
+        client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf!.Token);
+        var invalid = await client.PostAsJsonAsync("/api/categorias", new { nombre = " " });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal("application/problem+json", invalid.Content.Headers.ContentType!.MediaType);
+        var error = await invalid.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("PasswordHash", error);
+        Assert.DoesNotContain("StackTrace", error);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/productos/9999")).StatusCode);
+    }
+    private static FormUrlEncodedContent Form(Dictionary<string,string> values) => new(values);
+    private static string Token(string html)
+    {
+        var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
+        Assert.True(match.Success);
+        return WebUtility.HtmlDecode(match.Groups[1].Value);
+    }
     private static async Task Login(SmokeFactory factory, HttpClient client, string role)
     {
         var email = $"{Guid.NewGuid():N}@example.test";

@@ -49,6 +49,9 @@ No se ha aplicado esta migración a PostgreSQL en esta ejecución: faltan secret
 Después de aplicar la migración, configura por user-secrets `Bootstrap:Email`, `Bootstrap:Nombre` y `Bootstrap:Password`. La contraseña debe tener al menos 12 caracteres, mayúscula, minúscula, número y símbolo. Elige una nueva contraseña local y nunca la guardes en archivos del proyecto.
 
 ```powershell
+dotnet user-secrets set "Bootstrap:Email" "TU_CORREO_ADMIN" --project ImportNet.API
+dotnet user-secrets set "Bootstrap:Nombre" "TU_NOMBRE_ADMIN" --project ImportNet.API
+dotnet user-secrets set "Bootstrap:Password" "TU_CLAVE_LOCAL" --project ImportNet.API
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project ImportNet.API -- --bootstrap-admin
 dotnet user-secrets remove "Bootstrap:Password" --project ImportNet.API
@@ -95,3 +98,5 @@ Las vistas están en `/`, `/categorias`, `/productos`, `/categorias/crear`, `/pr
 ## Alcance
 
 Catálogo, login y MVC inicial funcionan en las pruebas automatizadas. Inventario y ventas tienen modelo relacional inicial, pero no tienen endpoints ni transacciones de stock implementadas. No se ofrecen ventas sin protección de stock. Reportes, exportaciones y administración de empleados quedan pendientes. Consulta `docs/ESTADO.md`, `docs/DECISIONES.md` y `docs/PRUEBA-MANUAL.md`.
+
+El inventario completo de archivos está en `docs/ARCHIVOS.md` dentro de la carpeta de código `ImportNet`.
