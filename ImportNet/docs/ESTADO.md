@@ -1,5 +1,9 @@
 # Estado real — jornada 06/11/2026 (America/Lima)
 
+Validación adicional de Swagger/PostgreSQL: ver `VALIDACION-INICIAL.md`. Se mantiene pendiente la conexión PostgreSQL por falta de User Secrets. El documento distingue el HTTP real, el navegador y SQLite de las pruebas PostgreSQL aún no ejecutadas.
+
+Resultado de esta etapa: 23 pruebas .NET correctas (incluido Chrome con CRUD desde Swagger), una suite PostgreSQL omitida y seis pruebas JavaScript correctas. Build sin errores ni advertencias; auditoría NuGet sin vulnerabilidades reportadas. No se aplicaron migraciones ni se probó PostgreSQL sin credenciales. La base existente se conserva.
+
 ## Implementado
 
 - Cuatro capas .NET 10 y proyecto separado de pruebas; solución original conservada.

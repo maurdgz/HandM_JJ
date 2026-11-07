@@ -10,3 +10,5 @@
 8. Cerrar sesión con el botón (POST protegido). El catálogo API vuelve a responder 401. Probar que ReturnUrl externo no redirige fuera del host.
 
 Los flujos de login, autorización, antiforgery, API y parte de MVC ya se prueban automáticamente con SQLite en memoria. Estos pasos contra PostgreSQL y la inspección visual en navegador no se han ejecutado.
+
+Swagger ahora añade automáticamente el encabezado CSRF: abre `/swagger`, usa el enlace Iniciar sesión y vuelve a Swagger en el mismo navegador. Para cada operación pulsa Try it out, completa cuerpo/id y Execute. La verificación automatizada de navegador se describe en `VALIDACION-INICIAL.md`; no sustituye la prueba pendiente contra PostgreSQL.

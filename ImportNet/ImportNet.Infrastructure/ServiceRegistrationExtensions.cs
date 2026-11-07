@@ -27,7 +27,7 @@ public static class ServiceRegistrationExtensions
             o.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
             o.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
             o.Events.OnRedirectToLogin = c => {
-                if (c.Request.Path.StartsWithSegments("/api")) c.Response.StatusCode = 401;
+                if (c.Request.Path.StartsWithSegments("/api") || c.Request.Path == "/cuenta/csrf") c.Response.StatusCode = 401;
                 else c.Response.Redirect(c.RedirectUri);
                 return Task.CompletedTask;
             };

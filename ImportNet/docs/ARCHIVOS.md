@@ -1,6 +1,6 @@
-# Archivos de la entrega inicial
+# Archivos de ImportNet
 
-Lista de archivos versionados, relativa a la raíz de la solución. Class1.cs y el .csproj de plantilla fueron reemplazados tras comprobar su contenido. bin, obj, .idea y secretos no forman parte de esta lista.
+Inventario de archivos versionados y preparados para esta etapa, relativo a la raíz de la solución. No incluye bin, obj, credenciales ni herramientas de navegador instaladas temporalmente fuera del repositorio.
 
 - .gitignore
 - ImportNet.sln
@@ -29,6 +29,7 @@ Lista de archivos versionados, relativa a la raíz de la solución. Class1.cs y 
 - ImportNet/ImportNet.API/Views/_ViewStart.cshtml
 - ImportNet/ImportNet.API/appsettings.json
 - ImportNet/ImportNet.API/wwwroot/css/site.css
+- ImportNet/ImportNet.API/wwwroot/js/swagger-auth.js
 - ImportNet/ImportNet.API/wwwroot/lib/bootstrap/LICENSE
 - ImportNet/ImportNet.API/wwwroot/lib/bootstrap/bootstrap.min.css
 - ImportNet/ImportNet.Application/ImportNet.Application.csproj
@@ -53,20 +54,27 @@ Lista de archivos versionados, relativa a la raíz de la solución. Class1.cs y 
 - ImportNet/ImportNet.Infrastructure/Persistence/AppDbContext.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/AppDbContextFactory.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/CatalogoConfiguration.cs
+- ImportNet/ImportNet.Infrastructure/Persistence/DatabaseInspection.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/Migrations/20261107010635_InitialCreate.Designer.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/Migrations/20261107010635_InitialCreate.cs
 - ImportNet/ImportNet.Infrastructure/Persistence/Migrations/AppDbContextModelSnapshot.cs
 - ImportNet/ImportNet.Infrastructure/Repositories/UnitOfWork.cs
 - ImportNet/ImportNet.Infrastructure/ServiceRegistrationExtensions.cs
+- ImportNet/ImportNet.Tests/BrowserVerification.cs
 - ImportNet/ImportNet.Tests/CatalogoTests.cs
 - ImportNet/ImportNet.Tests/ImportNet.Tests.csproj
+- ImportNet/ImportNet.Tests/PostgreSqlTests.cs
 - ImportNet/ImportNet.Tests/SmokeTests.cs
 - ImportNet/ImportNet.Tests/TestSupport.cs
+- ImportNet/ImportNet.Tests/check_swagger_browser.py
+- ImportNet/ImportNet.Tests/swagger-auth.test.cjs
 - ImportNet/README.md
 - ImportNet/docs/ARCHIVOS.md
 - ImportNet/docs/DECISIONES.md
 - ImportNet/docs/ESTADO.md
 - ImportNet/docs/InitialCreate.sql
 - ImportNet/docs/PRUEBA-MANUAL.md
+- ImportNet/docs/VALIDACION-INICIAL.md
 - ImportNet/dotnet-tools.json
+- ImportNet/scripts/Configurar-Conexion.ps1
 - README.md

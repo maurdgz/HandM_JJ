@@ -6,11 +6,35 @@ using ImportNet.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace ImportNet.Tests;
 
 public sealed class SmokeTests
 {
+    [BrowserFact, Trait("Browser", "Chrome")]
+    public async Task Chrome_SwaggerCrudProtegido_LoginYLogout_ConSqlite()
+    {
+        using var factory = new SmokeFactory(useKestrel: true);
+        using var client = TestSupport.CreateKestrelClient(factory);
+        factory.InitializeSchema();
+        string email = "", password = "";
+        await Login(factory, client, "Administrador", (e, p) => { email = e; password = p; });
+        await BrowserVerification.Ejecutar(client.BaseAddress!, email, password);
+    }
+    [Fact]
+    public async Task KestrelReal_SirveSwaggerYLoginSinConfundirRutasMvcYApi()
+    {
+        using var factory = new SmokeFactory(useKestrel: true);
+        using var client = TestSupport.CreateKestrelClient(factory);
+        Assert.True(client.BaseAddress!.Port > 0);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/swagger/index.html")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/swagger/v1/swagger.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/cuenta/login")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/categorias")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/cuenta/csrf")).StatusCode);
+    }
     [Fact]
     public async Task Arranque_LoginSwaggerYProteccionAnonima()
     {
@@ -18,6 +42,19 @@ public sealed class SmokeTests
         using var client = factory.CreateClient(new() { AllowAutoRedirect = false });
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/cuenta/login")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/swagger/v1/swagger.json")).StatusCode);
+        var swagger = await client.GetStringAsync("/swagger/index.html");
+        Assert.Contains("/js/swagger-auth.js", swagger);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/js/swagger-auth.js")).StatusCode);
+        using var document = JsonDocument.Parse(await client.GetStringAsync("/swagger/v1/swagger.json"));
+        var paths = document.RootElement.GetProperty("paths");
+        Assert.Equal(4, paths.EnumerateObject().Count());
+        foreach (var module in new[] { "categorias", "productos" })
+        {
+            Assert.True(paths.GetProperty($"/api/{module}").TryGetProperty("get", out _));
+            Assert.True(paths.GetProperty($"/api/{module}").TryGetProperty("post", out _));
+            Assert.True(paths.GetProperty($"/api/{module}/{{id}}").TryGetProperty("put", out _));
+            Assert.True(paths.GetProperty($"/api/{module}/{{id}}").TryGetProperty("delete", out _));
+        }
         Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync("/")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/productos")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/categorias")).StatusCode);
@@ -130,15 +167,17 @@ public sealed class SmokeTests
         Assert.True(match.Success);
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
-    private static async Task Login(SmokeFactory factory, HttpClient client, string role)
+    internal static async Task Login(WebApplicationFactory<Program> factory, HttpClient client, string role, Action<string, string>? credentials = null)
     {
         var email = $"{Guid.NewGuid():N}@example.test";
         var password = $"Test!aA1{Guid.NewGuid():N}";
+        credentials?.Invoke(email, password);
         using (var scope = factory.Services.CreateScope())
         {
             var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            Assert.True((await roles.CreateAsync(new IdentityRole(role))).Succeeded);
+            if (!await roles.RoleExistsAsync(role))
+                Assert.True((await roles.CreateAsync(new IdentityRole(role))).Succeeded);
             var user = new ApplicationUser { UserName = email, Email = email };
             Assert.True((await users.CreateAsync(user, password)).Succeeded);
             Assert.True((await users.AddToRoleAsync(user, role)).Succeeded);

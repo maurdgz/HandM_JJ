@@ -11,11 +11,19 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 namespace ImportNet.Tests;
 
 internal static class TestSupport
 {
+    public static HttpClient CreateKestrelClient(WebApplicationFactory<Program> factory)
+    {
+        var server = factory.Services.GetRequiredService<IServer>();
+        var address = server.Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = new Uri(address) };
+    }
     public static void UseTestDatabase(IServiceCollection services, SqliteConnection connection)
     {
         services.RemoveAll<DbContextOptions<AppDbContext>>();
@@ -57,7 +65,11 @@ internal sealed class ApplicationFixture : IDisposable
 internal sealed class SmokeFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection connection = new("Data Source=:memory:");
-    public SmokeFactory() => connection.Open();
+    public SmokeFactory(bool useKestrel = false)
+    {
+        connection.Open();
+        if (useKestrel) UseKestrel(0);
+    }
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");

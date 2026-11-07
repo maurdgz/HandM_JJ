@@ -33,3 +33,9 @@ coverage/
 *.tmp
 *.bak
 *dump*.sql
+
+# Browser/Python verification artifacts
+__pycache__/
+*.py[cod]
+playwright-report/
+test-results/
