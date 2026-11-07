@@ -1,0 +1,10 @@
+@model ImportNet.API.Models.CategoriaForm
+@{ ViewData["Title"] = Model.Id == 0 ? "Crear categoria" : "Editar categoria"; }
+<h1 class="mb-4">@ViewData["Title"]</h1>
+<form method="post" action="/categorias/guardar" class="card shadow-sm p-4">
+@Html.AntiForgeryToken()
+<input asp-for="Id" type="hidden"/>
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+<div class="row g-3"><div class="col-md-6"><label asp-for="Nombre" class="form-label">Nombre</label><input asp-for="Nombre" type="text"  class="form-control"/><span asp-validation-for="Nombre" class="text-danger"></span></div></div>
+<div class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button> <a href="/categorias" class="btn btn-outline-secondary">Volver</a></div>
+</form>

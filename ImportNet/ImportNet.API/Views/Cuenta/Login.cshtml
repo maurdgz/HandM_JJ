@@ -1,0 +1,16 @@
+@model ImportNet.API.Models.LoginForm
+@{ ViewData["Title"] = "Iniciar sesión"; }
+<div class="mx-auto login-card">
+<p class="text-primary fw-bold text-uppercase small">Bienvenido a ImportNet</p>
+<h1 class="mb-2">Acceso de empleados</h1>
+<p class="text-secondary mb-4">Ingresa con tu cuenta de trabajo para gestionar el catálogo.</p>
+<form method="post" action="/cuenta/login" class="card shadow-sm p-4">
+@Html.AntiForgeryToken()
+<input asp-for="ReturnUrl" type="hidden"/>
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+<label asp-for="Email" class="form-label">Correo</label>
+<input asp-for="Email" class="form-control mb-3" autocomplete="username"/>
+<label asp-for="Password" class="form-label">Contraseña</label>
+<input asp-for="Password" class="form-control mb-4" autocomplete="current-password"/>
+<button type="submit" class="btn btn-primary">Iniciar sesión</button>
+</form></div>

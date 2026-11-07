@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>@ViewData["Title"] · ImportNet</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/bootstrap.min.css"/>
+    <link rel="stylesheet" href="~/css/site.css"/>
+</head>
+<body>
+<header class="navbar navbar-dark bg-dark px-4 py-3">
+    <a class="navbar-brand fw-bold" href="/">ImportNet <span class="badge text-bg-primary ms-2">Gestión</span></a>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="d-flex align-items-center gap-3 text-white">
+            <span class="small">@User.Identity.Name</span>
+            <form method="post" action="/cuenta/logout">@Html.AntiForgeryToken()<button class="btn btn-outline-light btn-sm">Cerrar sesión</button></form>
+        </div>
+    }
+</header>
+<div class="container-fluid"><div class="row">
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <aside class="col-md-2 bg-white border-end min-vh-100 p-4">
+        <p class="text-uppercase small text-secondary fw-bold">Operaciones</p>
+        <nav class="nav flex-column gap-2">
+            <a class="nav-link" href="/">Inicio</a>
+            @if (User.IsInRole("Administrador") || User.IsInRole("Almacenero") || User.IsInRole("Vendedor"))
+            {
+                <a class="nav-link" href="/categorias">Categorías</a>
+                <a class="nav-link" href="/productos">Productos</a>
+            }
+        </nav>
+        <p class="small text-secondary mt-5">Catálogo inicial · USD<br/>Importación y ventas internacionales</p>
+    </aside>
+}
+<main class="@(User.Identity?.IsAuthenticated == true ? "col-md-10" : "col-12") p-4 p-lg-5">
+    @if (TempData["Mensaje"] is string mensaje) { <div class="alert alert-success" role="status">@mensaje</div> }
+    @if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    @RenderBody()
+</main></div></div>
+</body></html>
