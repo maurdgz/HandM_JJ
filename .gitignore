@@ -1,0 +1,35 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+# Rider / IDE state
+.idea/
+.vs/
+*.user
+*.suo
+# Local configuration, credentials and private material
+.env
+.env.*
+!.env.example
+secrets.json
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.*.local.json
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+*.pgpass
+.aws/
+.codex/
+.agents/
+# Generated and temporary artifacts
+TestResults/
+coverage/
+*.trx
+*.log
+*.tmp
+*.bak
+*dump*.sql
