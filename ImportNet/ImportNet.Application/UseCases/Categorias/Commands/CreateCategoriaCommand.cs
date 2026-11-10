@@ -7,13 +7,10 @@ internal sealed class CreateCategoriaCommandHandler(IUnitOfWork uow) : IRequestH
 {
     public async Task<int> Handle(CreateCategoriaCommand r, CancellationToken ct)
     {
-        var repo = uow.Repository<Categoria>();
         var entidad = new Categoria(r.Nombre);
-
-        if (await repo.Existe(x => x.NombreNormalizado == entidad.NombreNormalizado && x.Id != entidad.Id, ct))
+        if (await uow.Categorias.ExisteNombre(entidad.NombreNormalizado, entidad.Id, ct))
             throw new ConflictoException("Ya existe una categoría con ese nombre.");
-
-        repo.Agregar(entidad);
+        uow.Categorias.Agregar(entidad);
         await uow.Guardar(ct);
         return entidad.Id;
     }

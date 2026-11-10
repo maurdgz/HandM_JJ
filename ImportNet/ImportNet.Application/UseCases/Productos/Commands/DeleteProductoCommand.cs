@@ -7,11 +7,10 @@ internal sealed class DeleteProductoCommandHandler(IUnitOfWork uow) : IRequestHa
 {
     public async Task<Unit> Handle(DeleteProductoCommand r, CancellationToken ct)
     {
-        var repo = uow.Repository<Producto>();
-        var entidad = await repo.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Producto no encontrada.");
-        if (await uow.ProductoTieneReferencias(r.Id, ct))
+        var entidad = await uow.Productos.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Producto no encontrado.");
+        if (await uow.Productos.TieneReferencias(r.Id, ct))
             throw new ConflictoException("El producto tiene inventario, proveedores o historial y no se puede eliminar.");
-        repo.Eliminar(entidad);
+        uow.Productos.Eliminar(entidad);
         await uow.Guardar(ct);
         return Unit.Value;
     }

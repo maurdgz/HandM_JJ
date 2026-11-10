@@ -7,17 +7,12 @@ internal sealed class UpdateProductoCommandHandler(IUnitOfWork uow) : IRequestHa
 {
     public async Task<Unit> Handle(UpdateProductoCommand r, CancellationToken ct)
     {
-        var repo = uow.Repository<Producto>();
-        var entidad = await repo.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Producto no encontrada.");
+        var entidad = await uow.Productos.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Producto no encontrado.");
         entidad.Editar(r.Codigo, r.Nombre, r.Descripcion, r.UnidadMedida, r.Peso, r.PrecioVenta, r.PartidaArancelaria, r.CategoriaId, r.StockMinimo);
-
-        if (!await uow.Repository<Categoria>().Existe(x => x.Id == r.CategoriaId, ct))
+        if (!await uow.Categorias.Existe(r.CategoriaId, ct))
             throw new ReglaNegocioException("La categoría no existe.");
-        var codigo = r.Codigo?.Trim().ToUpperInvariant();
-        if (await repo.Existe(x => x.Codigo == codigo && x.Id != entidad.Id, ct))
+        if (await uow.Productos.ExisteCodigo(entidad.Codigo, entidad.Id, ct))
             throw new ConflictoException("Ya existe un producto con ese código.");
-
-
         await uow.Guardar(ct);
         return Unit.Value;
     }

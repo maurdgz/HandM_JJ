@@ -6,5 +6,5 @@ public sealed record GetAllProductosQuery() : IRequest<IReadOnlyList<Producto>>;
 internal sealed class GetAllProductosQueryHandler(IUnitOfWork uow) : IRequestHandler<GetAllProductosQuery, IReadOnlyList<Producto>>
 {
     public async Task<IReadOnlyList<Producto>> Handle(GetAllProductosQuery r, CancellationToken ct)
-        => await uow.Repository<Producto>().Listar(ct);
+        => await uow.Productos.Listar(ct);
 }
