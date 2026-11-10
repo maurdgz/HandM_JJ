@@ -108,11 +108,11 @@ def check(base_url, authenticated):
                 row.get_by_role("link", name="Editar", exact=True).click()
                 page.locator('input[name="Apellidos"]').fill("Editado")
                 page.locator("#role-Vendedor").uncheck()
-                page.locator("#role-Almacenero").check()
+                page.locator("#role-Administrador").check()
                 page.get_by_role("button", name="Guardar empleado", exact=True).click()
                 page.wait_for_url(re.compile(r"/empleados$"))
                 row = page.locator("tbody tr").filter(has_text=documento)
-                assert "Editado" in row.inner_text() and "Almacenero" in row.inner_text()
+                assert "Editado" in row.inner_text() and "Administrador" in row.inner_text()
                 checks += 1
                 stage = "empleados MVC desactivacion"
                 with page.expect_navigation():

@@ -109,12 +109,12 @@ public sealed class SmokeTests
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/categorias", new { nombre = "Prohibido" })).StatusCode);
     }
     [Fact]
-    public async Task Almacenero_FormularioProductoGuardaEditaYPresentaErrores()
+    public async Task Administrador_FormularioProductoGuardaEditaYPresentaErrores()
     {
         using var factory = new SmokeFactory();
         using var client = factory.CreateClient(new() { AllowAutoRedirect = false });
         factory.InitializeSchema();
-        await Login(factory, client, "Almacenero");
+        await Login(factory, client, "Administrador");
         var categoriaForm = await client.GetStringAsync("/categorias/crear");
         Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/categorias/guardar", Form(new() {
             ["Nombre"] = "Accesorios", ["__RequestVerificationToken"] = Token(categoriaForm)

@@ -1,3 +1,5 @@
+> Registro histórico del 06/11/2026. Desde el 10/11/2026 el rol Almacenero ya no existe; ver `ESTADO.md`.
+
 # Validación de PostgreSQL y Swagger
 
 > Registro histórico del 06/11/2026. La limitación de conexión que se describe aquí quedó resuelta el 07/11/2026: ver `DIA-01-EMPLEADOS.md` para migraciones aplicadas e integración real verificada.

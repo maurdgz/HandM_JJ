@@ -76,7 +76,6 @@ public sealed class PostgreSqlTests
 {
     [PostgreSqlTheory, Trait("Database", "PostgreSQL")]
     [InlineData("Administrador", true)]
-    [InlineData("Almacenero", true)]
     [InlineData("Vendedor", false)]
     public async Task IdentityYCatalogo_ContraPostgreSql_ConRollback(string role, bool puedeEditar)
     {
@@ -106,10 +105,10 @@ public sealed class PostgreSqlTests
             Assert.Equal(HttpStatusCode.Created, registered.StatusCode);
             var empleadoId = (await registered.Content.ReadFromJsonAsync<IdResponse>())!.Id;
             Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/empleados/{empleadoId}", new UpdateEmpleadoCommand(empleadoId,
-                command.Datos with { Cargo = "Almacenero" }, true, ["Almacenero"]))).StatusCode);
+                command.Datos with { Cargo = "Supervisor" }, true, ["Administrador"]))).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await client.PatchAsJsonAsync($"/api/empleados/{empleadoId}/estado", new { activo = false })).StatusCode);
             var saved = await client.GetFromJsonAsync<EmpleadoDto>($"/api/empleados/{empleadoId}");
-            Assert.False(saved!.Activo); Assert.Contains("Almacenero", saved.Roles);
+            Assert.False(saved!.Activo); Assert.Contains("Administrador", saved.Roles);
         }
         else Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/empleados")).StatusCode);
         var unique = Guid.NewGuid().ToString("N");

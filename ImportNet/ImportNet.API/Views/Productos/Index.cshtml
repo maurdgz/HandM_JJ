@@ -1,5 +1,5 @@
 @model IReadOnlyList<ImportNet.Domain.Entities.Producto>
-@{ ViewData["Title"] = "Productos"; var editar = User.IsInRole("Administrador") || User.IsInRole("Almacenero"); }
+@{ ViewData["Title"] = "Productos"; var editar = User.IsInRole("Administrador"); }
 <div class="d-flex justify-content-between align-items-center mb-4"><h1>Productos</h1>
 @if (editar) { <a class="btn btn-primary" href="/productos/crear">Crear producto</a> }</div>
 <div class="card shadow-sm"><div class="table-responsive"><table class="table align-middle mb-0">

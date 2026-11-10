@@ -29,7 +29,7 @@
             {
                 <a class="nav-link" href="/empleados">Empleados</a>
             }
-            @if (User.IsInRole("Administrador") || User.IsInRole("Almacenero") || User.IsInRole("Vendedor"))
+            @if (User.IsInRole("Administrador") || User.IsInRole("Vendedor"))
             {
                 <a class="nav-link" href="/categorias">Categorías</a>
                 <a class="nav-link" href="/productos">Productos</a>

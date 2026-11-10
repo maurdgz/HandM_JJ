@@ -63,7 +63,7 @@ powershell -ExecutionPolicy Bypass -File ./scripts/Crear-Administrador.ps1
 dotnet run --project ImportNet.API/ImportNet.API.csproj --launch-profile ImportNet
 ```
 
-El bootstrap solo funciona en desarrollo, exige migraciones al día, crea los tres roles y asocia un Empleado al administrador dentro de una transacción. No cambia ni promueve cuentas existentes. No hay registro público ni contraseñas predeterminadas. Los siguientes empleados y sus roles se administran desde `/empleados`, exclusivamente por un Administrador.
+El bootstrap solo funciona en desarrollo, exige migraciones al día, crea los roles Administrador y Vendedor y asocia un Empleado al administrador dentro de una transacción. No cambia ni promueve cuentas existentes. No hay registro público ni contraseñas predeterminadas. Los siguientes empleados y sus roles se administran desde `/empleados`, exclusivamente por un Administrador.
 
 Arranque desde terminal o configuración equivalente en Rider:
 
@@ -77,12 +77,12 @@ Frontend: http://localhost:5080/ (redirige al login sin sesión). Login: http://
 
 | Método | Ruta | Política |
 | --- | --- | --- |
-| GET | `/api/categorias`, `/api/categorias/{id}` | Administrador, Almacenero, Vendedor |
-| POST | `/api/categorias` | Administrador, Almacenero |
-| PUT, DELETE | `/api/categorias/{id}` | Administrador, Almacenero |
-| GET | `/api/productos`, `/api/productos/{id}` | Administrador, Almacenero, Vendedor |
-| POST | `/api/productos` | Administrador, Almacenero |
-| PUT, DELETE | `/api/productos/{id}` | Administrador, Almacenero |
+| GET | `/api/categorias`, `/api/categorias/{id}` | Administrador, Vendedor |
+| POST | `/api/categorias` | Administrador |
+| PUT, DELETE | `/api/categorias/{id}` | Administrador |
+| GET | `/api/productos`, `/api/productos/{id}` | Administrador, Vendedor |
+| POST | `/api/productos` | Administrador |
+| PUT, DELETE | `/api/productos/{id}` | Administrador |
 | GET, POST | `/api/empleados` | Administrador |
 | GET, PUT | `/api/empleados/{id}` | Administrador |
 | PATCH | `/api/empleados/{id}/estado` | Administrador |
@@ -107,7 +107,7 @@ Ejemplo de cuerpo para crear producto (primero crea una categoría):
 }
 ```
 
-Para probar en Swagger, usa el enlace **Iniciar sesión** de la descripción de la API y vuelve a Swagger en el mismo navegador. Pulsa **Try it out**, completa los datos y pulsa **Execute**. Swagger conserva la sesión del navegador y obtiene automáticamente un token CSRF nuevo antes de cada POST, PUT o DELETE. No hay que pegar contraseñas ni cookies en Authorize. Vendedor solo consulta; Administrador y Almacenero modifican. El cierre de sesión se realiza con el botón de MVC.
+Para probar en Swagger, usa el enlace **Iniciar sesión** de la descripción de la API y vuelve a Swagger en el mismo navegador. Pulsa **Try it out**, completa los datos y pulsa **Execute**. Swagger conserva la sesión del navegador y obtiene automáticamente un token CSRF nuevo antes de cada POST, PUT o DELETE. No hay que pegar contraseñas ni cookies en Authorize. Vendedor solo consulta; Administrador modifica. El cierre de sesión se realiza con el botón de MVC.
 
 Para otros clientes HTTP, usa `GET /cuenta/csrf` con tu sesión y envía el token como `X-CSRF-TOKEN`, conservando las cookies. Ese endpoint responde 401 sin sesión. La protección CSRF sigue siendo obligatoria también desde Swagger.
 
@@ -129,7 +129,7 @@ dotnet test ../ImportNet.sln --filter Database=PostgreSQL
 Remove-Item Env:IMPORTNET_POSTGRES_TESTS
 ```
 
-Ejercitan login/logout, los tres roles y CRUD real mediante Kestrel/Npgsql. Cada caso abre una transacción y revierte sus usuarios, roles y registros de prueba; no modifica filas existentes. PostgreSQL puede avanzar secuencias aunque la transacción se revierta. No crean ni eliminan bases o tablas ni aplican migraciones automáticamente.
+Ejercitan login/logout, los dos roles y CRUD real mediante Kestrel/Npgsql. Cada caso abre una transacción y revierte sus usuarios, roles y registros de prueba; no modifica filas existentes. PostgreSQL puede avanzar secuencias aunque la transacción se revierta. No crean ni eliminan bases o tablas ni aplican migraciones automáticamente.
 
 El interceptor de Swagger tiene seis pruebas JavaScript sin dependencias npm:
 

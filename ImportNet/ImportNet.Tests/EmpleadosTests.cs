@@ -20,7 +20,6 @@ public sealed class EmpleadosTests
 {
     [Theory]
     [InlineData("Vendedor")]
-    [InlineData("Almacenero")]
     public async Task Administracion_ExigeAdministradorEnHttpYCasoDeUso(string role)
     {
         using var factory = new SmokeFactory();
@@ -99,10 +98,10 @@ public sealed class EmpleadosTests
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/empleados", Nuevo() with { Datos = Nuevo().Datos with { Telefono = "-------" } })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/empleados", Nuevo() with { Password = "sololetrasminusculas" })).StatusCode);
         var updated = command.Datos with { Apellidos = "Herrera", Email = $"{Guid.NewGuid():N}@example.test" };
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/empleados/{id}", new UpdateEmpleadoCommand(id, updated with { Nombre = " " }, true, ["Almacenero"]))).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/empleados/{id}", new UpdateEmpleadoCommand(id, updated, true, ["Almacenero"]))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/empleados/{id}", new UpdateEmpleadoCommand(id, updated with { Nombre = " " }, true, ["Administrador"]))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/empleados/{id}", new UpdateEmpleadoCommand(id, updated, true, ["Administrador"]))).StatusCode);
         var actual = await client.GetFromJsonAsync<EmpleadoDto>($"/api/empleados/{id}");
-        Assert.Equal(registered.UsuarioId, actual!.UsuarioId); Assert.Equal(updated.Email, actual.Email); Assert.Equal(new[] { "Almacenero" }, actual.Roles);
+        Assert.Equal(registered.UsuarioId, actual!.UsuarioId); Assert.Equal(updated.Email, actual.Email); Assert.Equal(new[] { "Administrador" }, actual.Roles);
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

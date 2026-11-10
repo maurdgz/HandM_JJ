@@ -1,4 +1,8 @@
-# Estado actual — 07/11/2026 (America/Lima)
+# Estado actual — 10/11/2026 (America/Lima)
+
+Rol Almacenero retirado según el plan v2: quedan Administrador y Vendedor. Catálogo e inventario solo los modifica Administrador; Vendedor consulta. Sin migración: es un cambio de datos y no de modelo, la base de desarrollo no tiene usuarios Almacenero y las tablas de Identity se reemplazan en el Día 03 (JWT). Pruebas SQLite: 26 aprobadas; las suites PostgreSQL y Chrome quedan pendientes de ejecutar con `IMPORTNET_POSTGRES_TESTS=1` e `IMPORTNET_BROWSER_TESTS=1`.
+
+## Registro histórico del 07/11/2026
 
 Gestión de empleados, perfiles y roles implementada. PostgreSQL local integrado: InitialCreate y EmployeeProfiles aplicadas tras inspeccionar la base vacía; ninguna migración pendiente. Pasaron los casos esenciales y la integración real de los tres roles. Detalle y primer acceso seguro: `DIA-01-EMPLEADOS.md`.
 

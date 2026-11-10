@@ -8,9 +8,11 @@
 - Los registros antiguos sin documento se conservan con NULL y apellidos vacíos, sin inventar datos. La edición exige completar el perfil. El bootstrap de nuevas cuentas administrativas exige el perfil completo.
 - Commands/Queries de MediatR con record y Handler en el mismo archivo. DTO seguro de salida sin UserManager/IdentityUser, hashes, sellos o contraseña. El contrato específico IAdministracionEmpleados permite guardar empleado y cuenta atómicamente; IUsuarioActual comprueba autorización en los casos de uso. No se añadió CRUD genérico.
 
+> Actualización 10/11/2026: el rol Almacenero se retiró (plan v2). Los resultados de pruebas de esta jornada se conservan como registro histórico con tres roles.
+
 ## Seguridad y atomicidad
 
-- Controladores MVC/API con política Administracion; solo Administrador. Vendedor y Almacenero no administran empleados ni roles. Los casos de uso comprueban además la identidad y la condición de administrador activo en la base, sin confiar únicamente en claims antiguos.
+- Controladores MVC/API con política Administracion; solo Administrador. Vendedor no administra empleados ni roles. Los casos de uso comprueban además la identidad y la condición de administrador activo en la base, sin confiar únicamente en claims antiguos.
 - SignInManager de Identity comprueba que haya un empleado asociado y activo antes de permitir login. No hay autenticación paralela.
 - Cambios de acceso actualizan SecurityStamp. Identity valida las cookies con intervalo de un minuto: una sesión deshabilitada se rechaza en la siguiente petición al vencer ese intervalo. Los casos de uso de empleados rechazan de inmediato al administrador desactivado o degradado, aunque la cookie aún contenga claims anteriores.
 - La comprobación del último Administrador activo y el cambio de acceso se ejecutan en la misma transacción. PostgreSQL usa pg_advisory_xact_lock(480071126) para serializar cambios concurrentes, incluyendo el bootstrap. No se permite desactivar al último administrador ni quitarle ese rol, también desde una edición completa.
@@ -27,7 +29,7 @@
 | PUT | `/api/empleados/{id}` | Datos, roles y estado; 204 |
 | PATCH | `/api/empleados/{id}/estado` | Activación/desactivación; 204 |
 | PUT | `/api/empleados/{id}/roles` | Asignar roles existentes; 204 |
-| GET | `/api/empleados/roles` | Administrador, Vendedor, Almacenero |
+| GET | `/api/empleados/roles` | Administrador, Vendedor |
 
 Crear recibe `{ "datos": { "nombre", "apellidos", "documentoIdentidad", "email", "telefono", "cargo", "area" }, "password", "activo", "roles" }`; editar recibe los mismos datos sin password. Los valores completos de ejemplo están en los esquemas de Swagger. El id de ruta prevalece sobre el cuerpo. UsuarioId nunca se acepta para reasociar una cuenta arbitraria.
 

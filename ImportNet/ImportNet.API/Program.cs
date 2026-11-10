@@ -11,10 +11,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddAuthorization(o => {
-    o.AddPolicy("CatalogoLeer", p => p.RequireRole("Administrador", "Almacenero", "Vendedor"));
-    o.AddPolicy("CatalogoEditar", p => p.RequireRole("Administrador", "Almacenero"));
+    o.AddPolicy("CatalogoLeer", p => p.RequireRole("Administrador", "Vendedor"));
+    o.AddPolicy("CatalogoEditar", p => p.RequireRole("Administrador"));
     o.AddPolicy("Administracion", p => p.RequireRole("Administrador"));
-    o.AddPolicy("Inventario", p => p.RequireRole("Administrador", "Almacenero"));
+    o.AddPolicy("Inventario", p => p.RequireRole("Administrador"));
     o.AddPolicy("Ventas", p => p.RequireRole("Administrador", "Vendedor"));
 });
 builder.Services.AddProblemDetails();
@@ -26,7 +26,7 @@ builder.Services.AddSwaggerGen(o => {
         Description = "Catálogo y empleados protegidos por roles y cookies de Identity. " +
             "[Iniciar sesión](/cuenta/login?returnUrl=%2Fswagger) en este mismo navegador. " +
             "Swagger envía automáticamente el token CSRF en POST, PUT y DELETE. " +
-            "Catálogo: Administrador/Almacenero modifican, Vendedor consulta. Empleados y roles: solo Administrador."
+            "Catálogo: Administrador modifica, Vendedor consulta. Empleados y roles: solo Administrador."
     });
     o.DocInclusionPredicate((_, description) => description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true);
 });

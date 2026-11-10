@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ImportNet.Application.UseCases.Empleados;
+using ImportNet.Application.Security;
 
 namespace ImportNet.Infrastructure.Identity;
 
@@ -30,7 +31,7 @@ public static class AdminBootstrapper
             throw new InvalidOperationException("La cuenta ya existe. El bootstrap no modifica cuentas existentes.");
         await using var tx = await db.Database.BeginTransactionAsync();
         if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(480071126)");
-        foreach (var role in new[] { "Administrador", "Vendedor", "Almacenero" })
+        foreach (var role in RolesImportNet.Todos)
             if (!await roles.RoleExistsAsync(role)) Exigir(await roles.CreateAsync(new IdentityRole(role)));
         var user = new ApplicationUser { UserName = datos.Email, Email = datos.Email, PhoneNumber = datos.Telefono };
         Exigir(await users.CreateAsync(user, password));
