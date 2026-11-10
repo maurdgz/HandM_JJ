@@ -22,7 +22,7 @@ internal sealed class UnitOfWork(AppDbContext db) : IUnitOfWork
     public async Task<bool> ProductoTieneReferencias(int id, CancellationToken ct)
         => await db.Set<Inventario>().AnyAsync(x => x.ProductoId == id, ct)
         || await db.Set<MovimientoInventario>().AnyAsync(x => x.ProductoId == id, ct)
-        || await db.Set<DetalleOrdenVenta>().AnyAsync(x => x.ProductoId == id, ct)
+        || await db.Set<DetalleVenta>().AnyAsync(x => x.ProductoId == id, ct)
         || await db.Set<ProveedorProducto>().AnyAsync(x => x.ProductoId == id, ct);
     public async Task<int> Guardar(CancellationToken ct)
     {

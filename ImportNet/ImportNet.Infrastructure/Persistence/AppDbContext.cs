@@ -27,7 +27,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasOne<ApplicationUser>().WithOne().HasForeignKey<Empleado>(x => x.UsuarioId);
         });
         b.Entity<ApplicationUser>().HasIndex(x => x.NormalizedEmail).HasDatabaseName("EmailIndex").IsUnique();
-        b.Entity<Almacen>().ToTable("Almacen");
+        b.Entity<Almacen>(e => {
+            e.ToTable("Almacen");
+            e.HasData(new Almacen { Id = Almacen.PrincipalId, Nombre = "Principal" });
+        });
         b.Entity<Inventario>(e => {
             e.ToTable("Inventario", t => t.HasCheckConstraint("CK_Inventario_Cantidad", "\"Cantidad\" >= 0"));
             e.HasIndex(x => new { x.ProductoId, x.AlmacenId }).IsUnique();
@@ -47,33 +50,35 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId);
         });
         b.Entity<Cliente>(e => {
-            e.ToTable("Cliente");
-            e.Property(x => x.MonedaPreferida).HasMaxLength(3);
-            e.Property(x => x.IncotermPreferido).HasMaxLength(3);
+            e.ToTable("Cliente", t => t.HasCheckConstraint("CK_Cliente_TipoDocumento", "\"TipoDocumento\" IN (0, 1)"));
+            e.Property(x => x.NumeroDocumento).HasMaxLength(11);
+            e.Property(x => x.Telefono).HasMaxLength(20);
+            e.HasIndex(x => x.NumeroDocumento).IsUnique();
         });
-        b.Entity<OrdenVenta>(e => {
-            e.ToTable("OrdenVenta", t => {
-                t.HasCheckConstraint("CK_OrdenVenta_Importes", "\"TipoCambio\" > 0 AND \"Subtotal\" >= 0 AND \"Total\" = \"Subtotal\"");
-                t.HasCheckConstraint("CK_OrdenVenta_Estado", "\"Estado\" BETWEEN 0 AND 4");
+        b.Entity<Venta>(e => {
+            e.ToTable("Venta", t => {
+                t.HasCheckConstraint("CK_Venta_Importes", "\"Subtotal\" >= 0 AND \"Descuento\" >= 0 AND \"Descuento\" <= \"Subtotal\" AND \"Total\" = \"Subtotal\" - \"Descuento\"");
+                t.HasCheckConstraint("CK_Venta_Estado", "\"Estado\" IN (0, 1)");
+                t.HasCheckConstraint("CK_Venta_Anulacion", "(\"Estado\" = 0 AND \"MotivoAnulacion\" IS NULL) OR (\"Estado\" = 1 AND \"MotivoAnulacion\" IS NOT NULL)");
             });
             e.HasOne<Empleado>().WithMany().HasForeignKey(x => x.EmpleadoId);
             e.HasOne<Cliente>().WithMany().HasForeignKey(x => x.ClienteId);
-            e.HasOne<Almacen>().WithMany().HasForeignKey(x => x.AlmacenId);
-            e.Property(x => x.Moneda).HasMaxLength(3);
-            e.Property(x => x.Incoterm).HasMaxLength(3);
-            e.Property(x => x.TipoCambio).HasPrecision(18, 6);
             e.Property(x => x.Subtotal).HasPrecision(18, 2);
+            e.Property(x => x.Descuento).HasPrecision(18, 2);
             e.Property(x => x.Total).HasPrecision(18, 2);
+            e.Property(x => x.MotivoAnulacion).HasMaxLength(300);
+            e.HasIndex(x => x.Numero).IsUnique();
             e.HasIndex(x => x.Fecha);
             if (Database.IsNpgsql()) e.Property(x => x.Version).IsRowVersion();
             else e.Ignore(x => x.Version);
         });
-        b.Entity<DetalleOrdenVenta>(e => {
-            e.ToTable("DetalleOrdenVenta", t => t.HasCheckConstraint("CK_Detalle_Importes", "\"Cantidad\" > 0 AND \"PrecioUnitario\" >= 0 AND \"Subtotal\" >= 0"));
-            e.HasOne<OrdenVenta>().WithMany().HasForeignKey(x => x.OrdenVentaId);
+        b.Entity<DetalleVenta>(e => {
+            e.ToTable("DetalleVenta", t => t.HasCheckConstraint("CK_DetalleVenta_Importes", "\"Cantidad\" > 0 AND \"PrecioUnitario\" >= 0 AND \"Descuento\" >= 0 AND \"Subtotal\" >= 0"));
+            e.HasOne<Venta>().WithMany().HasForeignKey(x => x.VentaId);
             e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId);
-            e.HasIndex(x => new { x.OrdenVentaId, x.ProductoId }).IsUnique();
+            e.HasIndex(x => new { x.VentaId, x.ProductoId }).IsUnique();
             e.Property(x => x.PrecioUnitario).HasPrecision(18, 2);
+            e.Property(x => x.Descuento).HasPrecision(18, 2);
             e.Property(x => x.Subtotal).HasPrecision(18, 2);
         });
         b.Entity<MovimientoInventario>(e => {
@@ -84,9 +89,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasOne<Almacen>().WithMany().HasForeignKey(x => x.AlmacenId);
             e.HasOne<Empleado>().WithMany().HasForeignKey(x => x.EmpleadoId);
             e.HasOne<Proveedor>().WithMany().HasForeignKey(x => x.ProveedorId);
-            e.HasOne<OrdenVenta>().WithMany().HasForeignKey(x => x.OrdenVentaId);
+            e.HasOne<Venta>().WithMany().HasForeignKey(x => x.VentaId);
             e.HasIndex(x => x.Fecha);
-            e.HasIndex(x => new { x.OrdenVentaId, x.ProductoId, x.AlmacenId, x.Tipo }).IsUnique();
+            e.HasIndex(x => new { x.VentaId, x.ProductoId, x.AlmacenId, x.Tipo }).IsUnique();
         });
         foreach (var fk in b.Model.GetEntityTypes().SelectMany(x => x.GetForeignKeys()))
             fk.DeleteBehavior = DeleteBehavior.Restrict;

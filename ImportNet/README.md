@@ -100,7 +100,7 @@ Ejemplo de cuerpo para crear producto (primero crea una categoría):
   "descripcion": null,
   "unidadMedida": "Unidad",
   "peso": 0.125,
-  "precioUsd": 4.50,
+  "precioVenta": 4.50,
   "partidaArancelaria": "854442",
   "categoriaId": 1,
   "stockMinimo": 2

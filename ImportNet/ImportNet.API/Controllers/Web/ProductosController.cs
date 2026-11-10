@@ -19,7 +19,7 @@ public sealed class ProductosController(IMediator mediator) : Controller
         if (id.HasValue)
         {
             var item = await mediator.Send(new GetProductoByIdQuery(id.Value), ct);
-            form = new ProductoForm { Id = item.Id, Codigo = item.Codigo, Nombre = item.Nombre, Descripcion = item.Descripcion, UnidadMedida = item.UnidadMedida, Peso = item.Peso, PrecioUsd = item.PrecioUsd, PartidaArancelaria = item.PartidaArancelaria, CategoriaId = item.CategoriaId, StockMinimo = item.StockMinimo };
+            form = new ProductoForm { Id = item.Id, Codigo = item.Codigo, Nombre = item.Nombre, Descripcion = item.Descripcion, UnidadMedida = item.UnidadMedida, Peso = item.Peso, PrecioVenta = item.PrecioVenta, PartidaArancelaria = item.PartidaArancelaria, CategoriaId = item.CategoriaId, StockMinimo = item.StockMinimo };
         }
         form.Categorias = await mediator.Send(new GetAllCategoriasQuery(), ct);
         return View(form);
@@ -31,8 +31,8 @@ public sealed class ProductosController(IMediator mediator) : Controller
         {
             try
             {
-                if (form.Id == 0) await mediator.Send(new CreateProductoCommand(form.Codigo, form.Nombre, form.Descripcion, form.UnidadMedida, form.Peso, form.PrecioUsd, form.PartidaArancelaria, form.CategoriaId, form.StockMinimo), ct);
-                else await mediator.Send(new UpdateProductoCommand(form.Id, form.Codigo, form.Nombre, form.Descripcion, form.UnidadMedida, form.Peso, form.PrecioUsd, form.PartidaArancelaria, form.CategoriaId, form.StockMinimo), ct);
+                if (form.Id == 0) await mediator.Send(new CreateProductoCommand(form.Codigo, form.Nombre, form.Descripcion, form.UnidadMedida, form.Peso, form.PrecioVenta, form.PartidaArancelaria, form.CategoriaId, form.StockMinimo), ct);
+                else await mediator.Send(new UpdateProductoCommand(form.Id, form.Codigo, form.Nombre, form.Descripcion, form.UnidadMedida, form.Peso, form.PrecioVenta, form.PartidaArancelaria, form.CategoriaId, form.StockMinimo), ct);
                 TempData["Mensaje"] = "Registro guardado.";
                 return RedirectToAction(nameof(Index));
             }

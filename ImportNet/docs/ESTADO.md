@@ -2,6 +2,17 @@
 
 Rol Almacenero retirado según el plan v2: quedan Administrador y Vendedor. Catálogo e inventario solo los modifica Administrador; Vendedor consulta. Sin migración: es un cambio de datos y no de modelo, la base de desarrollo no tiene usuarios Almacenero y las tablas de Identity se reemplazan en el Día 03 (JWT). Pruebas SQLite: 26 aprobadas; las suites PostgreSQL y Chrome quedan pendientes de ejecutar con `IMPORTNET_POSTGRES_TESTS=1` e `IMPORTNET_BROWSER_TESTS=1`.
 
+## Modelo ajustado a tienda — 10/11/2026
+
+Migraciones nuevas, solo generadas (no aplicadas en esta máquina por falta de User Secrets):
+
+- `ProductoPrecioVenta`: `PrecioUsd` pasa a `PrecioVenta` (PEN); se agregan `CostoPromedio` y `Activo`; `Peso` y `PartidaArancelaria` son opcionales.
+- `ClienteLocal`: Cliente con `TipoDocumento` (DNI/RUC), `NumeroDocumento` único, `Nombre` y `Telefono`; se retiran empresa, país, moneda e Incoterm.
+- `VentaMostrador`: `OrdenVenta`/`DetalleOrdenVenta` se reemplazan por `Venta`/`DetalleVenta` con estados Registrada y Anulada, número único, cliente opcional, descuento y motivo de anulación; el movimiento de inventario referencia `VentaId`.
+- `AlmacenPrincipal`: almacén único sembrado con Id 1.
+
+Aplicar con `dotnet ef database update -p ImportNet.Infrastructure -s ImportNet.Infrastructure`. Pruebas SQLite: 28 aprobadas.
+
 ## Registro histórico del 07/11/2026
 
 Gestión de empleados, perfiles y roles implementada. PostgreSQL local integrado: InitialCreate y EmployeeProfiles aplicadas tras inspeccionar la base vacía; ninguna migración pendiente. Pasaron los casos esenciales y la integración real de los tres roles. Detalle y primer acceso seguro: `DIA-01-EMPLEADOS.md`.

@@ -81,11 +81,11 @@ def check(base_url, authenticated):
                 execute("GET", "/api/categorias/{id}", 200, identifier=categoria)
                 execute("PUT", "/api/categorias/{id}", 204, {"id": categoria, "nombre": "Edit-" + unique}, categoria)
                 product = {"codigo": "B-" + unique, "nombre": "Producto navegador", "unidadMedida": "Unidad", "peso": 0.125,
-                           "precioUsd": 4.50, "partidaArancelaria": "854442", "categoriaId": categoria, "stockMinimo": 1}
+                           "precioVenta": 4.50, "partidaArancelaria": "854442", "categoriaId": categoria, "stockMinimo": 1}
                 producto = execute("POST", "/api/productos", 201, product)["id"]
                 execute("GET", "/api/productos", 200)
                 execute("GET", "/api/productos/{id}", 200, identifier=producto)
-                execute("PUT", "/api/productos/{id}", 204, {**product, "id": producto, "precioUsd": 5.25}, producto)
+                execute("PUT", "/api/productos/{id}", 204, {**product, "id": producto, "precioVenta": 5.25}, producto)
                 execute("DELETE", "/api/categorias/{id}", 409, identifier=categoria)
                 execute("DELETE", "/api/productos/{id}", 204, identifier=producto)
                 execute("DELETE", "/api/categorias/{id}", 204, identifier=categoria)

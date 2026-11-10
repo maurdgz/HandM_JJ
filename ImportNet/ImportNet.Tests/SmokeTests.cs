@@ -76,7 +76,7 @@ public sealed class SmokeTests
         var id = (await created.Content.ReadFromJsonAsync<IdResponse>())!.Id;
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/categorias/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/categorias", new { nombre = "Tecnología" })).StatusCode);
-        var product = new { codigo = "usb-1", nombre = "Cable", descripcion = (string?)null, unidadMedida = "Unidad", peso = 0.1m, precioUsd = 3m, partidaArancelaria = "854442", categoriaId = id, stockMinimo = 2m };
+        var product = new { codigo = "usb-1", nombre = "Cable", descripcion = (string?)null, unidadMedida = "Unidad", peso = 0.1m, precioVenta = 3m, partidaArancelaria = "854442", categoriaId = id, stockMinimo = 2m };
         var productCreated = await client.PostAsJsonAsync("/api/productos", product);
         Assert.Equal(HttpStatusCode.Created, productCreated.StatusCode);
         var productoId = (await productCreated.Content.ReadFromJsonAsync<IdResponse>())!.Id;
@@ -125,7 +125,7 @@ public sealed class SmokeTests
         Assert.Contains("Accesorios", productForm);
         var fields = new Dictionary<string,string> {
             ["Id"] = "0", ["Codigo"] = "mvc-1", ["Nombre"] = "Producto MVC", ["UnidadMedida"] = "Unidad",
-            ["Peso"] = "0", ["PrecioUsd"] = "9.50", ["PartidaArancelaria"] = "854442", ["CategoriaId"] = categoria.ToString(),
+            ["Peso"] = "0", ["PrecioVenta"] = "9.50", ["PartidaArancelaria"] = "854442", ["CategoriaId"] = categoria.ToString(),
             ["StockMinimo"] = "2", ["__RequestVerificationToken"] = Token(productForm)
         };
         var invalid = await client.PostAsync("/productos/guardar", Form(fields));

@@ -38,6 +38,13 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Almacen", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nombre = "Principal"
+                        });
                 });
 
             modelBuilder.Entity("ImportNet.Domain.Entities.Categoria", b =>
@@ -74,37 +81,35 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Contacto")
+                    b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Empresa")
+                    b.Property<string>("NumeroDocumento")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
 
-                    b.Property<string>("IncotermPreferido")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
-                    b.Property<string>("MonedaPreferida")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
-
-                    b.Property<string>("Pais")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<int>("TipoDocumento")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cliente", (string)null);
+                    b.HasIndex("NumeroDocumento")
+                        .IsUnique();
+
+                    b.ToTable("Cliente", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Cliente_TipoDocumento", "\"TipoDocumento\" IN (0, 1)");
+                        });
                 });
 
-            modelBuilder.Entity("ImportNet.Domain.Entities.DetalleOrdenVenta", b =>
+            modelBuilder.Entity("ImportNet.Domain.Entities.DetalleVenta", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -116,8 +121,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
 
-                    b.Property<int>("OrdenVentaId")
-                        .HasColumnType("integer");
+                    b.Property<decimal>("Descuento")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("PrecioUnitario")
                         .HasPrecision(18, 2)
@@ -130,16 +136,19 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<int>("VentaId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProductoId");
 
-                    b.HasIndex("OrdenVentaId", "ProductoId")
+                    b.HasIndex("VentaId", "ProductoId")
                         .IsUnique();
 
-                    b.ToTable("DetalleOrdenVenta", null, t =>
+                    b.ToTable("DetalleVenta", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Detalle_Importes", "\"Cantidad\" > 0 AND \"PrecioUnitario\" >= 0 AND \"Subtotal\" >= 0");
+                            t.HasCheckConstraint("CK_DetalleVenta_Importes", "\"Cantidad\" > 0 AND \"PrecioUnitario\" >= 0 AND \"Descuento\" >= 0 AND \"Subtotal\" >= 0");
                         });
                 });
 
@@ -252,9 +261,6 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int?>("OrdenVentaId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("ProductoId")
                         .HasColumnType("integer");
 
@@ -262,6 +268,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("VentaId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -276,86 +285,12 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ProveedorId");
 
-                    b.HasIndex("OrdenVentaId", "ProductoId", "AlmacenId", "Tipo")
+                    b.HasIndex("VentaId", "ProductoId", "AlmacenId", "Tipo")
                         .IsUnique();
 
                     b.ToTable("MovimientoInventario", null, t =>
                         {
                             t.HasCheckConstraint("CK_Movimiento_Cantidad", "(\"Tipo\" IN (0, 1) AND \"Cantidad\" > 0) OR (\"Tipo\" = 2 AND \"Cantidad\" <> 0)");
-                        });
-                });
-
-            modelBuilder.Entity("ImportNet.Domain.Entities.OrdenVenta", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AlmacenId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClienteId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EmpleadoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Incoterm")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
-
-                    b.Property<string>("Moneda")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
-
-                    b.Property<string>("PaisDestino")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<decimal>("Subtotal")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<decimal>("TipoCambio")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("numeric(18,6)");
-
-                    b.Property<decimal>("Total")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AlmacenId");
-
-                    b.HasIndex("ClienteId");
-
-                    b.HasIndex("EmpleadoId");
-
-                    b.HasIndex("Fecha");
-
-                    b.ToTable("OrdenVenta", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_OrdenVenta_Estado", "\"Estado\" BETWEEN 0 AND 4");
-
-                            t.HasCheckConstraint("CK_OrdenVenta_Importes", "\"TipoCambio\" > 0 AND \"Subtotal\" >= 0 AND \"Total\" = \"Subtotal\"");
                         });
                 });
 
@@ -367,6 +302,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("CategoriaId")
                         .HasColumnType("integer");
 
@@ -374,6 +312,10 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("CostoPromedio")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<string>("Descripcion")
                         .HasMaxLength(1000)
@@ -385,15 +327,14 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<string>("PartidaArancelaria")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<decimal>("Peso")
+                    b.Property<decimal?>("Peso")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
 
-                    b.Property<decimal>("PrecioUsd")
+                    b.Property<decimal>("PrecioVenta")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -415,9 +356,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.ToTable("Producto", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Producto_Peso", "\"Peso\" > 0");
+                            t.HasCheckConstraint("CK_Producto_Costo", "\"CostoPromedio\" >= 0");
 
-                            t.HasCheckConstraint("CK_Producto_Precio", "\"PrecioUsd\" >= 0");
+                            t.HasCheckConstraint("CK_Producto_Peso", "\"Peso\" IS NULL OR \"Peso\" > 0");
+
+                            t.HasCheckConstraint("CK_Producto_Precio", "\"PrecioVenta\" >= 0");
 
                             t.HasCheckConstraint("CK_Producto_StockMinimo", "\"StockMinimo\" >= 0");
                         });
@@ -473,6 +416,75 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProductoId");
 
                     b.ToTable("ProveedorProducto", (string)null);
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.Venta", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ClienteId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Descuento")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("EmpleadoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaAnulacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("EmpleadoId");
+
+                    b.HasIndex("Fecha");
+
+                    b.HasIndex("Numero")
+                        .IsUnique();
+
+                    b.ToTable("Venta", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Venta_Anulacion", "(\"Estado\" = 0 AND \"MotivoAnulacion\" IS NULL) OR (\"Estado\" = 1 AND \"MotivoAnulacion\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Venta_Estado", "\"Estado\" IN (0, 1)");
+
+                            t.HasCheckConstraint("CK_Venta_Importes", "\"Subtotal\" >= 0 AND \"Descuento\" >= 0 AND \"Descuento\" <= \"Subtotal\" AND \"Total\" = \"Subtotal\" - \"Descuento\"");
+                        });
                 });
 
             modelBuilder.Entity("ImportNet.Infrastructure.Identity.ApplicationUser", b =>
@@ -695,17 +707,17 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("ImportNet.Domain.Entities.DetalleOrdenVenta", b =>
+            modelBuilder.Entity("ImportNet.Domain.Entities.DetalleVenta", b =>
                 {
-                    b.HasOne("ImportNet.Domain.Entities.OrdenVenta", null)
-                        .WithMany()
-                        .HasForeignKey("OrdenVentaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("ImportNet.Domain.Entities.Producto", null)
                         .WithMany()
                         .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ImportNet.Domain.Entities.Venta", null)
+                        .WithMany()
+                        .HasForeignKey("VentaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -748,11 +760,6 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ImportNet.Domain.Entities.OrdenVenta", null)
-                        .WithMany()
-                        .HasForeignKey("OrdenVentaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ImportNet.Domain.Entities.Producto", null)
                         .WithMany()
                         .HasForeignKey("ProductoId")
@@ -763,27 +770,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ProveedorId")
                         .OnDelete(DeleteBehavior.Restrict);
-                });
 
-            modelBuilder.Entity("ImportNet.Domain.Entities.OrdenVenta", b =>
-                {
-                    b.HasOne("ImportNet.Domain.Entities.Almacen", null)
+                    b.HasOne("ImportNet.Domain.Entities.Venta", null)
                         .WithMany()
-                        .HasForeignKey("AlmacenId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ImportNet.Domain.Entities.Cliente", null)
-                        .WithMany()
-                        .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ImportNet.Domain.Entities.Empleado", null)
-                        .WithMany()
-                        .HasForeignKey("EmpleadoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("VentaId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ImportNet.Domain.Entities.Producto", b =>
@@ -806,6 +797,20 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.HasOne("ImportNet.Domain.Entities.Proveedor", null)
                         .WithMany()
                         .HasForeignKey("ProveedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.Venta", b =>
+                {
+                    b.HasOne("ImportNet.Domain.Entities.Cliente", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ImportNet.Domain.Entities.Empleado", null)
+                        .WithMany()
+                        .HasForeignKey("EmpleadoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
