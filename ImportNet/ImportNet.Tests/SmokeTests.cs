@@ -9,6 +9,16 @@ namespace ImportNet.Tests;
 
 public sealed class SmokeTests
 {
+    [BrowserFact, Trait("Browser", "Chrome")]
+    public async Task Chrome_SwaggerLoginAuthorizeYCatalogoJwt()
+    {
+        using var factory = new SmokeFactory(useKestrel: true);
+        using var client = TestSupport.CreateKestrelClient(factory);
+        factory.InitializeSchema();
+        var (email, password, _) = await AuthApiTests.CrearUsuario(factory, "Administrador");
+        await BrowserVerification.Ejecutar(client.BaseAddress!, email, password);
+    }
+
     [Fact]
     public async Task Kestrel_SwaggerBearerYProteccionAnonima()
     {
