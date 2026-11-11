@@ -23,7 +23,9 @@ internal sealed class UsuarioRepository(AppDbContext db, UserManager<Application
             return null;
         }
         if (!(await users.ResetAccessFailedCountAsync(user)).Succeeded) return null;
-        return await Obtener(user.Id, ct);
+        var snapshot = await Obtener(user.Id, ct);
+        // Do not issue a fresh token if a concurrent access change invalidated the verified account.
+        return snapshot?.VersionAcceso == user.SecurityStamp ? snapshot : null;
     }
 
     public async Task<Usuario?> Obtener(string id, CancellationToken ct)
