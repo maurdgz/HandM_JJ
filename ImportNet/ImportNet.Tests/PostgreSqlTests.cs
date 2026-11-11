@@ -76,6 +76,27 @@ internal sealed class PostgreSqlFactory : WebApplicationFactory<Program>
 public sealed class PostgreSqlTests
 {
     [PostgreSqlTheory, Trait("Database", "PostgreSQL")]
+    [InlineData("Administrador")]
+    public async Task Bootstrap_NoDuplicaAdministradorExistente(string role)
+    {
+        using var factory = new PostgreSqlFactory();
+        using var client = TestSupport.CreateKestrelClient(factory);
+        await AuthApiTests.CrearUsuario(factory, role);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var before = await db.Users.CountAsync();
+        var command = EmpleadosTests.Nuevo();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Bootstrap:Email"] = command.Datos.Email, ["Bootstrap:Password"] = command.Password,
+            ["Bootstrap:Nombre"] = command.Datos.Nombre, ["Bootstrap:Apellidos"] = command.Datos.Apellidos,
+            ["Bootstrap:DocumentoIdentidad"] = command.Datos.DocumentoIdentidad, ["Bootstrap:Telefono"] = command.Datos.Telefono
+        }).Build();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => ImportNet.Infrastructure.Identity.AdminBootstrapper.Ejecutar(factory.Services, config));
+        Assert.Contains("Ya existe un Administrador activo", error.Message);
+        Assert.Equal(before, await db.Users.CountAsync());
+    }
+
+    [PostgreSqlTheory, Trait("Database", "PostgreSQL")]
     [InlineData("Administrador", true)]
     [InlineData("Vendedor", false)]
     public async Task JwtYCatalogo_ContraPostgreSql_ConRollback(string role, bool puedeEditar)

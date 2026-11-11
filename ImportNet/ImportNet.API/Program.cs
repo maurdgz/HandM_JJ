@@ -49,6 +49,8 @@ if (args.Contains("--bootstrap-admin"))
     Console.WriteLine("Administrador y roles creados. Retire Bootstrap:Password de los secretos.");
     return;
 }
+// Fail closed at startup; diagnostics and bootstrap do not need a signing key.
+_ = app.Services.GetRequiredService<JwtSettings>();
 app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {

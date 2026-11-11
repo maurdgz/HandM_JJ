@@ -26,11 +26,15 @@ public static class AdminBootstrapper
             config["Bootstrap:DocumentoIdentidad"] ?? "", email, config["Bootstrap:Telefono"] ?? "", "Administrador", "Administración"));
         if (await db.Database.GetPendingMigrationsAsync() is var pending && pending.Any())
             throw new InvalidOperationException("Aplique primero las migraciones revisadas.");
-        // Existing accounts are never silently promoted or given a new password.
+        await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync() : null;
+        if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(480071126)");
+        // Check under the same lock used by employee administration, including concurrent bootstrap attempts.
         if (await users.FindByEmailAsync(datos.Email) != null)
             throw new InvalidOperationException("La cuenta ya existe. El bootstrap no modifica cuentas existentes.");
-        await using var tx = await db.Database.BeginTransactionAsync();
-        if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(480071126)");
+        if (await (from e in db.Set<Empleado>() join ur in db.UserRoles on e.UsuarioId equals ur.UserId
+            join r in db.Roles on ur.RoleId equals r.Id
+            where e.Activo && r.Name == RolesImportNet.Administrador select e.Id).AnyAsync())
+            throw new InvalidOperationException("Ya existe un Administrador activo. Cree cuentas desde la API de empleados.");
         foreach (var role in RolesImportNet.Todos)
             if (!await roles.RoleExistsAsync(role)) Exigir(await roles.CreateAsync(new IdentityRole(role)));
         var user = new ApplicationUser { UserName = datos.Email, Email = datos.Email, PhoneNumber = datos.Telefono };
@@ -39,7 +43,7 @@ public static class AdminBootstrapper
         db.Set<Empleado>().Add(new Empleado { UsuarioId = user.Id, Nombre = datos.Nombre, Apellidos = datos.Apellidos,
             DocumentoIdentidad = datos.DocumentoIdentidad, Cargo = datos.Cargo, Area = datos.Area });
         await db.SaveChangesAsync();
-        await tx.CommitAsync();
+        if (tx != null) await tx.CommitAsync();
     }
     private static void Exigir(IdentityResult result)
     {
