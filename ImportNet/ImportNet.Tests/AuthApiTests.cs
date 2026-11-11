@@ -8,11 +8,54 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ImportNet.Tests;
 
 public sealed class AuthApiTests
 {
+    [Fact]
+    public async Task Bearer_RechazaVencidosManipuladosInactivosYCambiosDeAcceso()
+    {
+        using var factory = new SmokeFactory();
+        using var admin = factory.CreateClient();
+        using var seller = factory.CreateClient();
+        factory.InitializeSchema();
+        await SmokeTests.Login(factory, admin, "Administrador");
+        var (email, password, _) = await CrearUsuario(factory, "Vendedor");
+        var inactive = await CrearUsuario(factory, "Vendedor", activo: false);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await seller.PostAsJsonAsync("/api/auth/login", new { inactive.Email, inactive.Password })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await seller.GetAsync("/api/auth/me")).StatusCode);
+        var response = await SmokeTests.IniciarSesion(seller, email, password);
+        var result = (await response.Content.ReadFromJsonAsync<TokenDto>())!;
+        seller.DefaultRequestHeaders.Authorization = new("Bearer", result.AccessToken);
+        Assert.Equal(HttpStatusCode.Forbidden, (await seller.GetAsync("/api/empleados")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await seller.PostAsJsonAsync("/api/empleados", EmpleadosTests.Nuevo())).StatusCode);
+        var me = (await seller.GetFromJsonAsync<UsuarioDto>("/api/auth/me"))!;
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(result.AccessToken);
+        var config = factory.Services.GetRequiredService<IConfiguration>();
+        var settings = new JwtSettings(config);
+        var expired = new JwtSecurityToken(settings.Issuer, settings.Audience, token.Claims,
+            DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddHours(-1), new SigningCredentials(settings.Key, SecurityAlgorithms.HmacSha256));
+        seller.DefaultRequestHeaders.Authorization = new("Bearer", new JwtSecurityTokenHandler().WriteToken(expired));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await seller.GetAsync("/api/auth/me")).StatusCode);
+        var parts = result.AccessToken.Split('.');
+        parts[2] = (parts[2][0] == 'A' ? "B" : "A") + parts[2][1..];
+        seller.DefaultRequestHeaders.Authorization = new("Bearer", string.Join('.', parts));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await seller.GetAsync("/api/productos")).StatusCode);
+        seller.DefaultRequestHeaders.Authorization = new("Bearer", result.AccessToken);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/empleados/{me.EmpleadoId}/roles", new { roles = new[] { "Administrador" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await seller.GetAsync("/api/auth/me")).StatusCode);
+        var renewed = (await (await SmokeTests.IniciarSesion(seller, email, password)).Content.ReadFromJsonAsync<TokenDto>())!;
+        seller.DefaultRequestHeaders.Authorization = new("Bearer", renewed.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, (await seller.GetAsync("/api/empleados")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PatchAsJsonAsync($"/api/empleados/{me.EmpleadoId}/estado", new { activo = false })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await seller.GetAsync("/api/productos")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SmokeTests.IniciarSesion(seller, email, password)).StatusCode);
+    }
+
     [Fact]
     public async Task LoginHttp_TransicionIdentityYCredencialesInvalidas()
     {
