@@ -41,10 +41,24 @@ public sealed class Producto : CatalogEntity
     public decimal? Peso { get; private set; }
     public decimal PrecioVenta { get; private set; }
     public decimal CostoPromedio { get; private set; }
+    public decimal? CostoImportacionUsd { get; private set; }
+    public decimal? TipoCambioImportacion { get; private set; }
     public string? PartidaArancelaria { get; private set; }
     public int CategoriaId { get; private set; }
     public decimal StockMinimo { get; private set; }
     public bool Activo { get; private set; } = true;
+    // Reference cost only. Stock receipt and weighted average calculation belong to future purchases.
+    public void RegistrarCostoImportacion(decimal? importeUsd, decimal? tipoCambio)
+    {
+        if (importeUsd.HasValue != tipoCambio.HasValue
+            || importeUsd is < 0 or > 9999999999999999.99m
+            || tipoCambio is <= 0 or > 999999999999.999999m
+            || (importeUsd.HasValue && decimal.Round(importeUsd.Value, 2) != importeUsd)
+            || (tipoCambio.HasValue && decimal.Round(tipoCambio.Value, 6) != tipoCambio))
+            throw new ReglaNegocioException("Indique costo USD no negativo (2 decimales) y tipo de cambio PEN/USD positivo (6 decimales), o deje ambos vacíos.");
+        CostoImportacionUsd = importeUsd;
+        TipoCambioImportacion = tipoCambio;
+    }
     private Producto() { }
     public Producto(string codigo, string nombre, string? descripcion, string unidadMedida,
         decimal? peso, decimal precioVenta, string? partidaArancelaria, int categoriaId, decimal stockMinimo)

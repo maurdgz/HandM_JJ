@@ -59,7 +59,9 @@ public sealed class SmokeTests
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/categorias/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/categorias", new { nombre = "TECNOLOGIA" })).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/categorias/{id}", new { nombre = "Accesorios" })).StatusCode);
-        var producto = new { codigo = "USB-1", nombre = "Cable", unidadMedida = "Unidad", precioVenta = 12.34m, categoriaId = id, stockMinimo = 2m };
+        var producto = new { codigo = "USB-1", nombre = "Cable", unidadMedida = "Unidad", precioVenta = 12.34m, categoriaId = id, stockMinimo = 2m,
+            costoImportacionUsd = 2.50m, tipoCambioImportacion = 3.85m };
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/productos", producto with { tipoCambioImportacion = 0m })).StatusCode);
         var saved = await client.PostAsJsonAsync("/api/productos", producto);
         Assert.Equal(HttpStatusCode.Created, saved.StatusCode);
         var productoId = (await saved.Content.ReadFromJsonAsync<IdResponse>())!.Id;
@@ -67,11 +69,15 @@ public sealed class SmokeTests
         using var stored = JsonDocument.Parse(await client.GetStringAsync($"/api/productos/{productoId}"));
         Assert.Equal(15.75m, stored.RootElement.GetProperty("precioVenta").GetDecimal());
         Assert.True(stored.RootElement.TryGetProperty("costoPromedio", out _));
+        Assert.Equal(2.50m, stored.RootElement.GetProperty("costoImportacionUsd").GetDecimal());
+        Assert.Equal(3.85m, stored.RootElement.GetProperty("tipoCambioImportacion").GetDecimal());
         using (var seller = factory.CreateClient())
         {
             await Login(factory, seller, "Vendedor");
             using var visible = JsonDocument.Parse(await seller.GetStringAsync($"/api/productos/{productoId}"));
             Assert.False(visible.RootElement.TryGetProperty("costoPromedio", out _));
+            Assert.False(visible.RootElement.TryGetProperty("costoImportacionUsd", out _));
+            Assert.False(visible.RootElement.TryGetProperty("tipoCambioImportacion", out _));
             Assert.DoesNotContain("costoPromedio", await seller.GetStringAsync("/api/productos"));
         }
         Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/categorias/{id}")).StatusCode);

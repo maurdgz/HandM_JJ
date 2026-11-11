@@ -146,12 +146,14 @@ public sealed class PostgreSqlTests
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/categorias/{categoriaId}")).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/categorias", categoria)).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/categorias/{categoriaId}", new { nombre = $"Editada-{unique}" })).StatusCode);
-            var producto = new { codigo = $"T-{unique}", nombre = "Producto verificación", unidadMedida = "Unidad", peso = 0.125m, precioVenta = 12.34m, partidaArancelaria = "854442", categoriaId, stockMinimo = 2m };
+            var producto = new { codigo = $"T-{unique}", nombre = "Producto verificación", unidadMedida = "Unidad", peso = 0.125m, precioVenta = 12.34m, partidaArancelaria = "854442", categoriaId, stockMinimo = 2m, costoImportacionUsd = 3.25m, tipoCambioImportacion = 3.785m };
             var created = await client.PostAsJsonAsync("/api/productos", producto);
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             var productoId = (await created.Content.ReadFromJsonAsync<IdResponse>())!.Id;
             using var stored = JsonDocument.Parse(await client.GetStringAsync($"/api/productos/{productoId}"));
             Assert.Equal(12.34m, stored.RootElement.GetProperty("precioVenta").GetDecimal());
+            Assert.Equal(3.25m, stored.RootElement.GetProperty("costoImportacionUsd").GetDecimal());
+            Assert.Equal(3.785m, stored.RootElement.GetProperty("tipoCambioImportacion").GetDecimal());
             Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/productos/{productoId}", producto with { precioVenta = 15.75m })).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/categorias/{categoriaId}")).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/productos/{productoId}")).StatusCode);

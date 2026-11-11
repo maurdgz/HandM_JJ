@@ -313,6 +313,10 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<decimal?>("CostoImportacionUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("CostoPromedio")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -342,6 +346,10 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
 
+                    b.Property<decimal?>("TipoCambioImportacion")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<string>("UnidadMedida")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -357,6 +365,8 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.ToTable("Producto", null, t =>
                         {
                             t.HasCheckConstraint("CK_Producto_Costo", "\"CostoPromedio\" >= 0");
+
+                            t.HasCheckConstraint("CK_Producto_Importacion", "(\"CostoImportacionUsd\" IS NULL AND \"TipoCambioImportacion\" IS NULL) OR (\"CostoImportacionUsd\" IS NOT NULL AND \"TipoCambioImportacion\" IS NOT NULL AND \"CostoImportacionUsd\" >= 0 AND \"TipoCambioImportacion\" > 0)");
 
                             t.HasCheckConstraint("CK_Producto_Peso", "\"Peso\" IS NULL OR \"Peso\" > 0");
 

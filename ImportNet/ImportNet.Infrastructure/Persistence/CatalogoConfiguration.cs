@@ -22,6 +22,7 @@ internal sealed class ProductoConfiguration : IEntityTypeConfiguration<Producto>
             t.HasCheckConstraint("CK_Producto_Peso", "\"Peso\" IS NULL OR \"Peso\" > 0");
             t.HasCheckConstraint("CK_Producto_Precio", "\"PrecioVenta\" >= 0");
             t.HasCheckConstraint("CK_Producto_Costo", "\"CostoPromedio\" >= 0");
+            t.HasCheckConstraint("CK_Producto_Importacion", "(\"CostoImportacionUsd\" IS NULL AND \"TipoCambioImportacion\" IS NULL) OR (\"CostoImportacionUsd\" IS NOT NULL AND \"TipoCambioImportacion\" IS NOT NULL AND \"CostoImportacionUsd\" >= 0 AND \"TipoCambioImportacion\" > 0)");
             t.HasCheckConstraint("CK_Producto_StockMinimo", "\"StockMinimo\" >= 0");
         });
         e.HasKey(x => x.Id);
@@ -32,6 +33,8 @@ internal sealed class ProductoConfiguration : IEntityTypeConfiguration<Producto>
         e.Property(x => x.PartidaArancelaria).HasMaxLength(20);
         e.Property(x => x.PrecioVenta).HasPrecision(18, 2);
         e.Property(x => x.CostoPromedio).HasPrecision(18, 4);
+        e.Property(x => x.CostoImportacionUsd).HasPrecision(18, 2);
+        e.Property(x => x.TipoCambioImportacion).HasPrecision(18, 6);
         e.HasIndex(x => x.Codigo).IsUnique();
         e.HasOne<Categoria>().WithMany().HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.Restrict);
     }
