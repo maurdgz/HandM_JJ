@@ -17,6 +17,7 @@ public static class ServiceRegistrationExtensions
         services.AddDbContext<AppDbContext>(o => o.UseNpgsql(config.GetConnectionString("ImportNet")
             ?? "Host=localhost;Database=ImportNet;Username=postgres"));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IEmpleadoRepository, EmpleadoRepository>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUsuarioActual, UsuarioActual>();
         services.AddScoped<IAdministracionEmpleados, AdministracionEmpleados>();

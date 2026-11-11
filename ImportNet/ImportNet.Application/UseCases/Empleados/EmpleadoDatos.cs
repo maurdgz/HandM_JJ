@@ -42,7 +42,7 @@ public static class EmpleadoReglas
     public static string[] ValidarRoles(string[]? roles)
     {
         if (roles is null || roles.Length < 1 || roles.Length > RolesImportNet.Todos.Count || roles.Any(r => !RolesImportNet.Todos.Contains(r)))
-            throw new ReglaNegocioException("Seleccione al menos uno de los tres roles de ImportNet.");
+            throw new ReglaNegocioException("Seleccione Administrador o Vendedor.");
         return roles.Distinct().ToArray();
     }
     public static void ValidarId(int id)
