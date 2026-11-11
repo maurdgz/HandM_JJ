@@ -34,9 +34,16 @@ public static class DatabaseInspection
         var applied = tables.Contains("public.__EFMigrationsHistory")
             ? (await db.Database.GetAppliedMigrationsAsync()).ToArray() : Array.Empty<string>();
         var pending = db.Database.GetMigrations().Except(applied).ToArray();
+        var counts = new Dictionary<string, long>();
+        foreach (var table in new[] { "Producto", "Cliente", "OrdenVenta", "DetalleOrdenVenta", "Almacen", "MovimientoInventario" })
+        {
+            if (!tables.Contains("public." + table)) continue;
+            command.CommandText = $"SELECT count(*) FROM public.\"{table}\"";
+            counts[table] = (long)(await command.ExecuteScalarAsync())!;
+        }
         long? userCount = tables.Contains("public.AspNetUsers") ? await db.Users.LongCountAsync() : null;
         long? employeeCount = tables.Contains("public.Empleado") ? await db.Set<ImportNet.Domain.Entities.Empleado>().LongCountAsync() : null;
         Console.WriteLine(JsonSerializer.Serialize(new { Database = database, User = user, Tables = tables, AppliedMigrations = applied,
-            PendingMigrations = pending, Users = userCount, Employees = employeeCount }, new JsonSerializerOptions { WriteIndented = true }));
+            PendingMigrations = pending, Users = userCount, Employees = employeeCount, BusinessRows = counts }, new JsonSerializerOptions { WriteIndented = true }));
     }
 }
