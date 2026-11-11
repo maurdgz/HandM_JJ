@@ -18,6 +18,11 @@ namespace ImportNet.Tests;
 
 internal static class TestSupport
 {
+    public static void ConfigureJwt(Microsoft.Extensions.Configuration.IConfigurationBuilder builder)
+        => builder.AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Jwt:Issuer"] = "ImportNet.Tests", ["Jwt:Audience"] = "ImportNet.Tests",
+            ["Jwt:SigningKey"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64))
+        });
     public static HttpClient CreateKestrelClient(WebApplicationFactory<Program> factory)
     {
         var server = factory.Services.GetRequiredService<IServer>();
@@ -73,6 +78,7 @@ internal sealed class SmokeFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureAppConfiguration((_, config) => TestSupport.ConfigureJwt(config));
         builder.UseContentRoot(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../ImportNet.API")));
         builder.ConfigureServices(s => TestSupport.UseTestDatabase(s, connection));
     }
