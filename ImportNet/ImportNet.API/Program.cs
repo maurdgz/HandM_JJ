@@ -2,15 +2,13 @@ using ImportNet.Application;
 using ImportNet.Infrastructure;
 using ImportNet.Infrastructure.Identity;
 using ImportNet.API.Configuration;
-using Microsoft.AspNetCore.Mvc;
 using ImportNet.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
-builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
+builder.Services.AddControllers();
 builder.Services.AddAuthorization(o => {
     o.AddPolicy("CatalogoLeer", p => p.RequireRole("Administrador", "Vendedor"));
     o.AddPolicy("CatalogoEditar", p => p.RequireRole("Administrador"));
@@ -24,10 +22,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o => {
     o.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo {
         Title = "ImportNet API", Version = "v1",
-        Description = "Catálogo y empleados protegidos por roles y cookies de Identity. " +
-            "[Iniciar sesión](/cuenta/login?returnUrl=%2Fswagger) en este mismo navegador. " +
-            "Swagger envía automáticamente el token CSRF en POST, PUT y DELETE. " +
+        Description = "Ejecute POST /api/auth/login y copie accessToken en Authorize. " +
             "Catálogo: Administrador modifica, Vendedor consulta. Empleados y roles: solo Administrador."
+    });
+    o.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme {
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT",
+        Description = "Pegue accessToken sin el prefijo Bearer."
+    });
+    o.AddSecurityRequirement(document => new Microsoft.OpenApi.OpenApiSecurityRequirement {
+        [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
     o.DocInclusionPredicate((_, description) => description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true);
 });
@@ -53,16 +56,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(o => {
         o.SwaggerEndpoint("/swagger/v1/swagger.json", "ImportNet v1");
         o.DocumentTitle = "ImportNet · Swagger";
-        o.InjectJavascript("/js/swagger-auth.js");
-        o.UseRequestInterceptor("function(request) { return window.importNetSwaggerRequest(request); }");
     });
 }
 else { app.UseHsts(); app.UseHttpsRedirection(); }
-app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapControllerRoute("default", "{controller=Inicio}/{action=Index}/{id?}");
 app.Run();
 public partial class Program;

@@ -9,7 +9,7 @@ namespace ImportNet.API.Controllers.Api;
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AuthController(IMediator mediator) : ControllerBase
 {
-    [HttpPost("login"), AllowAnonymous, IgnoreAntiforgeryToken]
+    [HttpPost("login"), AllowAnonymous]
     [ProducesResponseType(200), ProducesResponseType(401)]
     public async Task<IActionResult> Login(LoginQuery query, CancellationToken ct)
         => Ok(await mediator.Send(query, ct));
