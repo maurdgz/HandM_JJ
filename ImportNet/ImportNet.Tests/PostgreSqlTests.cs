@@ -49,6 +49,7 @@ internal sealed class PostgreSqlFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureAppConfiguration((_, config) => TestSupport.ConfigureJwt(config));
         builder.UseContentRoot(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../ImportNet.API")));
         builder.ConfigureServices(services => {
             services.RemoveAll<AppDbContext>();
@@ -77,7 +78,7 @@ public sealed class PostgreSqlTests
     [PostgreSqlTheory, Trait("Database", "PostgreSQL")]
     [InlineData("Administrador", true)]
     [InlineData("Vendedor", false)]
-    public async Task IdentityYCatalogo_ContraPostgreSql_ConRollback(string role, bool puedeEditar)
+    public async Task JwtYCatalogo_ContraPostgreSql_ConRollback(string role, bool puedeEditar)
     {
         using var factory = new PostgreSqlFactory();
         using var client = TestSupport.CreateKestrelClient(factory);
@@ -87,8 +88,6 @@ public sealed class PostgreSqlTests
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/swagger/v1/swagger.json")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/categorias")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/productos")).StatusCode);
-        var csrf = await client.GetFromJsonAsync<CsrfResponse>("/cuenta/csrf");
-        client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf!.Token);
         if (role == "Administrador")
         {
             var profiles = (await client.GetFromJsonAsync<List<EmpleadoDto>>("/api/empleados"))!;
@@ -134,21 +133,15 @@ public sealed class PostgreSqlTests
             Assert.Equal(12.34m, stored.RootElement.GetProperty("precioVenta").GetDecimal());
             Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/productos/{productoId}", producto with { precioVenta = 15.75m })).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/categorias/{categoriaId}")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/categorias")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/productos")).StatusCode);
-            client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
-            Assert.Equal(HttpStatusCode.BadRequest, (await client.DeleteAsync($"/api/productos/{productoId}")).StatusCode);
-            client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf.Token);
             Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/productos/{productoId}")).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/productos/{productoId}")).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/categorias/{categoriaId}")).StatusCode);
         }
         if (role == "Administrador" && Environment.GetEnvironmentVariable("IMPORTNET_BROWSER_TESTS") == "1")
             await BrowserVerification.Ejecutar(client.BaseAddress!, testEmail, testPassword);
-        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/cuenta/logout", new FormUrlEncodedContent([]))).StatusCode);
+        client.DefaultRequestHeaders.Authorization = null;
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/productos")).StatusCode);
         // Disposal rolls back all test users, roles and catalog data. Existing rows are never modified.
     }
-    private sealed record CsrfResponse(string Token);
     private sealed record IdResponse(int Id);
 }
