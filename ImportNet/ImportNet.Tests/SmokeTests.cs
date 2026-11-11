@@ -56,6 +56,14 @@ public sealed class SmokeTests
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/productos/{productoId}", producto with { precioVenta = 15.75m })).StatusCode);
         using var stored = JsonDocument.Parse(await client.GetStringAsync($"/api/productos/{productoId}"));
         Assert.Equal(15.75m, stored.RootElement.GetProperty("precioVenta").GetDecimal());
+        Assert.True(stored.RootElement.TryGetProperty("costoPromedio", out _));
+        using (var seller = factory.CreateClient())
+        {
+            await Login(factory, seller, "Vendedor");
+            using var visible = JsonDocument.Parse(await seller.GetStringAsync($"/api/productos/{productoId}"));
+            Assert.False(visible.RootElement.TryGetProperty("costoPromedio", out _));
+            Assert.DoesNotContain("costoPromedio", await seller.GetStringAsync("/api/productos"));
+        }
         Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/categorias/{id}")).StatusCode);
         var invalid = await client.PostAsJsonAsync("/api/categorias", new { nombre = " " });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
