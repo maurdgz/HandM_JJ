@@ -35,7 +35,7 @@ public static class DatabaseInspection
             ? (await db.Database.GetAppliedMigrationsAsync()).ToArray() : Array.Empty<string>();
         var pending = db.Database.GetMigrations().Except(applied).ToArray();
         var counts = new Dictionary<string, long>();
-        foreach (var table in new[] { "Producto", "Cliente", "OrdenVenta", "DetalleOrdenVenta", "Almacen", "MovimientoInventario" })
+        foreach (var table in new[] { "Producto", "Cliente", "OrdenVenta", "DetalleOrdenVenta", "Venta", "DetalleVenta", "Almacen", "MovimientoInventario" })
         {
             if (!tables.Contains("public." + table)) continue;
             command.CommandText = $"SELECT count(*) FROM public.\"{table}\"";
@@ -43,7 +43,11 @@ public static class DatabaseInspection
         }
         long? userCount = tables.Contains("public.AspNetUsers") ? await db.Users.LongCountAsync() : null;
         long? employeeCount = tables.Contains("public.Empleado") ? await db.Set<ImportNet.Domain.Entities.Empleado>().LongCountAsync() : null;
+        long? bcrypt = tables.Contains("public.AspNetUsers")
+            ? await db.Users.LongCountAsync(u => u.PasswordHash != null && u.PasswordHash.StartsWith("{bcrypt-sha384}")) : null;
+        var roles = tables.Contains("public.AspNetRoles") ? await db.Roles.AsNoTracking().Select(r => r.Name).OrderBy(n => n).ToArrayAsync() : [];
         Console.WriteLine(JsonSerializer.Serialize(new { Database = database, User = user, Tables = tables, AppliedMigrations = applied,
-            PendingMigrations = pending, Users = userCount, Employees = employeeCount, BusinessRows = counts }, new JsonSerializerOptions { WriteIndented = true }));
+            PendingMigrations = pending, Users = userCount, Employees = employeeCount, BcryptAccounts = bcrypt,
+            LegacyOrUnsetAccounts = userCount - bcrypt, Roles = roles, BusinessRows = counts }, new JsonSerializerOptions { WriteIndented = true }));
     }
 }
