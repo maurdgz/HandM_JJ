@@ -1,25 +1,36 @@
-# Recuperación Día 02 — 11/11/2026
+﻿# Recuperación Día 02 — ejecutada el 11/11/2026
 
-## Auditoría inicial
+Plan original: 10/11/2026, José Carlos Vitorino. Se mantiene la identidad Git real configurada y la fecha de ejecución; no se atribuye trabajo nuevo a otro integrante.
 
-GitHub y checkout limpio en main: `6a81905674ac1d026ca744f398e8c856454dd0a5`, comprobado mediante fetch. Identidad Git existente conservada.
+## Auditoría
 
-Ya implementado: puertos específicos de categorías/productos, adaptadores LINQ ordenados y sin seguimiento para listados, UnitOfWork con guardado atómico y traducción de conflictos PostgreSQL; handlers sin EF ni IQueryable. Dependencias: Domain independiente; Application → Domain; Infrastructure → Application/Domain; API → Application/Infrastructure. Todos los proyectos usan net10.0.
+GitHub y checkout limpio coincidían en `6a81905674ac1d026ca744f398e8c856454dd0a5`. Se inspeccionaron referencias de los cinco proyectos, entidades, repositorios, UnitOfWork, handlers, controladores, migraciones, pruebas e informes.
 
-`dbc779f` limita roles a Administrador/Vendedor; `7aebed6` incorpora precio/costo PEN, stock mínimo, código único, cliente local y venta de mostrador; `6a81905` incorpora repositorios específicos del catálogo. Se conservan estos avances.
+Se conservan `dbc779f` (dos roles), `7aebed6` (PEN y tienda local) y `6a81905` (puertos y adaptadores del catálogo). Domain no depende de EF ni ASP.NET; Application solo referencia Domain; Infrastructure referencia Application/Domain; API compone ambas. No hay AppDbContext, EF ni IQueryable en Domain/Application. El contrato especializado de administración de empleados conserva la transacción entre cuenta, roles y empleado, con bloqueo PostgreSQL para proteger al último administrador.
 
-Pendientes reales: puerto de lectura de empleados en Domain, coherencia de documentación y mensajes de roles, CI y revisión de migraciones. La administración de cuentas ya posee un contrato específico en Application y transacciones con bloqueo PostgreSQL para proteger al último administrador: no corresponde sustituirlo por CRUD genérico.
+## Hitos: comprobar antes de modificar
 
-PostgreSQL accesible mediante User Secrets: InitialCreate/EmployeeProfiles aplicadas, un usuario y un empleado; cuatro migraciones pendientes. ClienteLocal elimina columnas y VentaMostrador elimina tablas: requieren inspección de filas antes de aplicar. Renombrar PrecioUsd no convierte USD a PEN: si existen productos se necesita decidir precios reales, sin inventar tipo de cambio.
+| Hito | Resultado |
+| --- | --- |
+| 1. Auditoría | Documentada y diagnóstico de filas incorporado |
+| 2–5. Puertos/adaptadores de categorías y productos | Ya implementados, conservados y verificados |
+| 6–7. Puerto/adaptador de empleados | IEmpleadoRepository y EmpleadoRepository incorporados; DI y consumo de estado |
+| 8. UnitOfWork/transacciones | Ya implementados; guardado atómico y conflictos, más transacción especializada de cuentas |
+| 9–10. Handlers desacoplados | Ya implementados; sin consultas EF en Application |
+| 11. Producto PEN | Ya implementado; completada referencia opcional USD/tipo de cambio detectada en revisión final |
+| 12. Cliente/almacén | Modelo anterior conservado; migraciones protegidas y Principal aplicado |
+| 13. Roles | Código anterior de dos roles conservado; fila legado sin asignaciones retirada durante transición auth |
+| 14. Migraciones | SQL revisado, bloqueos de datos añadidos y AjusteModeloTienda aditiva |
+| 15. CI/validación | Workflow restore/build/test y documentación |
 
-No se implementan compras, recepción, ventas ni frontend en esta recuperación. Se informará el número real de commits sin duplicar hitos ya resueltos.
+No se crean repositorios para módulos futuros ni se fuerzan 15 commits sobre código ya implementado. Cinco commits de este bloque: 017085e, 5969844, 3ed18f5, 37b1a29 y efdf6b5. El último es una corrección del requisito de modelo detectada en la validación final, después de la implementación JWT; el orden real queda en Git.
 
-## Cierre
+## PostgreSQL y seguridad de datos
 
-Puerto IEmpleadoRepository implementado y consumido por el control de acceso activo. Se conserva la transacción especializada de administración. Corregido mensaje de roles y agregado CI restore/build/test .NET 10.
+La inspección inicial encontró InitialCreate/EmployeeProfiles aplicadas, un usuario, un empleado y tablas Producto, Cliente, OrdenVenta, DetalleOrdenVenta, Almacen y MovimientoInventario vacías. Se revisó DIA-02-MIGRACIONES.sql y se aplicaron las cuatro migraciones anteriores. Las operaciones que eliminan estructuras solo continúan si no existen datos afectados; con filas detienen la migración para exigir un mapeo explícito. PrecioUsd no se convierte silenciosamente a PEN. El almacén protege identidad y secuencia.
 
-Las tablas Producto, Cliente, OrdenVenta, DetalleOrdenVenta, Almacen y MovimientoInventario estaban vacías. Se revisó `DIA-02-MIGRACIONES.sql` y se aplicaron las cuatro migraciones pendientes. Se agregaron bloqueos explícitos ante datos que requieran conversión o archivo, y protección de identidad/secuencia de almacén. Ninguna cuenta ni empleado se eliminó. No hace falta una migración duplicada AjusteModeloTienda.
+AjusteModeloTienda agrega únicamente CostoImportacionUsd y TipoCambioImportacion opcionales con restricciones. Son referencia de costo USD y PEN/USD suministrada por el administrador; no convierten precios ni calculan promedios o inventario. Cliente local, ventas de mostrador y relaciones existentes se conservan. No se implementaron operaciones futuras de compras, recepción ni ventas.
 
-La configuración de importaciones USD/tipo de cambio sigue fuera del modelo actual de compras: no se inventa un módulo ni una conversión monetaria. PrecioVenta y CostoPromedio son PEN; Codigo es el SKU único. El costo no debe exponerse al vendedor durante la transición API.
+## Evidencia
 
-Validación inicial: build sin advertencias, 28 pruebas aprobadas y 2 PostgreSQL omitidas. Las pruebas con cookies necesitan ejecutarse fuera del sandbox Windows por DPAPI; el fallo inicial fue ambiental y se repitieron satisfactoriamente. Las verificaciones PostgreSQL y final se registran después de ejecutarlas.
+Antes de JWT: build sin advertencias, 28 pruebas ordinarias aprobadas y 2 PostgreSQL omitidas. Al habilitar PostgreSQL: 30 aprobadas y 1 navegador omitida. Las pruebas originales con cookies se ejecutaron fuera del sandbox Windows por DPAPI. La validación final API ya no depende de cookies: 32 pruebas aprobadas sin omisiones, con PostgreSQL/Chrome habilitados. Detalle final y tabla de commits en INFORME-DIAS-02-03.md.

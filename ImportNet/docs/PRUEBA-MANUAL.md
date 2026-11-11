@@ -1,14 +1,13 @@
-# Prueba manual pendiente en PostgreSQL
+﻿# Prueba manual — API JWT
 
-1. Configurar conexión en user-secrets, revisar esquema existente y SQL InitialCreate, aplicar migración revisada. Ejecutar bootstrap explícito con secretos propios y retirar su contraseña del almacén.
-2. Arrancar `dotnet run --project ImportNet.API`; abrir `/cuenta/login`. Credencial incorrecta muestra error genérico; la correcta lleva a Inicio. No introducir contraseñas en tickets o capturas.
-3. En Categorías, crear Electrónica, editar nombre y comprobar listado. Un duplicado, incluso variando mayúsculas, debe mostrar error visible.
-4. Crear producto USB-001 en la categoría: precio de venta S/ 4.50 y stock mínimo 2 (peso y partida son opcionales). Debe aparecer en el listado. Editarlo y comprobar persistencia tras recargar.
-5. Intentar peso cero, precio negativo y código duplicado: no deben guardarse. Intentar eliminar categoría con producto: debe mostrar conflicto. Eliminar producto sin historial y después categoría: ambos desaparecen.
-6. En sesión autenticada, `GET /cuenta/csrf` devuelve token. Enviar POST API conservando cookies y encabezado X-CSRF-TOKEN: 201. Sin token: 400. GET por id inexistente: 404.
-7. Desde `/empleados`, crear un Vendedor. Vendedor consulta el catálogo pero no lo modifica (403 en API); solo Administrador crea/edita catálogo. Un usuario sin sesión recibe 401 en API.
-8. Cerrar sesión con el botón (POST protegido). El catálogo API vuelve a responder 401. Probar que ReturnUrl externo no redirige fuera del host.
+Desde la carpeta ImportNet, configurar JWT con `scripts/Configurar-Jwt.ps1`, inspeccionar PostgreSQL y ejecutar el perfil ImportNet de ImportNet.API. Swagger está en http://localhost:5080/swagger.
 
-Los flujos de login, autorización, antiforgery, API y parte de MVC ya se prueban automáticamente con SQLite en memoria. Estos pasos contra PostgreSQL y la inspección visual en navegador no se han ejecutado.
+1. Ejecutar POST /api/auth/login con credenciales locales. Una contraseña incorrecta o un empleado inactivo responde 401. La cuenta antigua se convierte a BCrypt solo tras una contraseña válida.
+2. Copiar accessToken en Authorize (sin prefijo) y ejecutar GET /api/auth/me. No aparecen hashes ni sellos.
+3. Como Administrador, crear/editar/consultar/eliminar categoría y producto sin historial. Duplicado y categoría referenciada producen 409; precio negativo, costo USD sin tipo de cambio o cambio cero producen 400. Precio de venta en PEN.
+4. Consultar costoImportacionUsd y tipoCambioImportacion proporcionados por el administrador. No existe conversión automática del precio ni actualización del promedio.
+5. Crear Vendedor desde POST /api/empleados. Obtener su JWT en otra sesión o reemplazando Authorize. Puede consultar catálogo; no modificarlo ni administrar empleados (403). La respuesta de productos omite todos los costos y el tipo de cambio.
+6. Restablecer JWT del administrador y cambiar roles/desactivar al empleado temporal. Su JWT anterior responde 401 de inmediato. No se permite retirar el rol ni desactivar al último Administrador activo (409).
+7. Sin Authorization, recursos protegidos responden 401. Token manipulado/vencido responde 401. Ya no existen vistas ni rutas de cuenta MVC.
 
-Swagger ahora añade automáticamente el encabezado CSRF: abre `/swagger`, usa el enlace Iniciar sesión y vuelve a Swagger en el mismo navegador. Para cada operación pulsa Try it out, completa cuerpo/id y Execute. La verificación automatizada de navegador se describe en `VALIDACION-INICIAL.md`; no sustituye la prueba pendiente contra PostgreSQL.
+Automatización: pruebas HTTP SQLite y PostgreSQL, además de Chrome usando POST /login, Authorize, GET /me, empleados y catálogo. Las pruebas PostgreSQL revierten sus registros. No probar contra cuentas reales cambiando sus accesos.

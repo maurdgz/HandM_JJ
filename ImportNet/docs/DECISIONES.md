@@ -1,3 +1,14 @@
+# Decisiones vigentes — 11/11/2026
+
+- ASP.NET Core Web API .NET 10, sin MVC, cookies ni frontend. Swagger Bearer y JWT HS256 de dos horas.
+- Identity Core permanece como adaptador de persistencia/validación de las cuentas previas; no como esquema HTTP. Usuario/Rol/UsuarioRol se proyectan desde las tablas existentes para conservar IDs, relaciones y hashes.
+- BCrypt costo 12 con SHA-384 previo; transición desde Identity solo al verificar contraseña correcta. JWT consulta estado, roles y versión de acceso en cada petición. Costo, tipo de cambio y promedio solo visibles al Administrador.
+- CostoImportacionUsd y TipoCambioImportacion son referencias opcionales del producto, sin conversión de precios ni lógica de compras. PrecioVenta y CostoPromedio se expresan en PEN. Codigo es el SKU.
+- Migraciones existentes protegidas frente a datos que necesiten conversión/archivo. Las tablas afectadas estaban vacías antes de aplicar. AjusteModeloTienda es aditiva; RetirarRolAlmacenero rechaza asignaciones existentes. Tablas Identity conservadas.
+- Se mantienen los puertos y handlers previos de catálogo y la administración transaccional de empleados. No se agregan abstracciones genéricas ni módulos de siguientes jornadas.
+- Las decisiones que siguen son registro histórico de sus fechas originales. Sus referencias a MVC, tres roles o exportación ya no describen el comportamiento actual. Ver README e INFORME-DIAS-02-03.md.
+
+---
 # Decisiones — 06/11/2026
 
 Actualización 07/11: empleados y roles usan un contrato específico para guardar cuenta y empleado atómicamente, autorización en los casos de uso y bloqueo transaccional PostgreSQL para conservar al último Administrador activo. Estado activo reside en Empleado; correo/teléfono y credencial residen en Identity. Nuevos perfiles obligatorios, perfiles antiguos conservados sin inventar documentos. Ver `DIA-01-EMPLEADOS.md`.

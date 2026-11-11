@@ -1,86 +1,57 @@
-# ImportNet
+﻿# ImportNet
 
-Base real en ASP.NET Core **.NET 10**, PostgreSQL y Clean Architecture. Un solo host sirve API JSON y MVC con cookies de Identity. Repositorio: https://github.com/maurdgz/HandM_JJ.git.
+Backend **ASP.NET Core Web API, .NET 10**, PostgreSQL y arquitectura hexagonal. Repositorio: https://github.com/maurdgz/HandM_JJ.git, rama `main`. El frontend futuro será Astro + TypeScript + Tailwind + shadcn/ui; no se desarrolla en esta jornada.
 
-La solución permanece en `C:\Users\Usuario\RiderProjects\ImportNet\ImportNet.sln`. Los comandos de esta guía se ejecutan desde su subcarpeta `ImportNet` (la carpeta de código original de Rider).
+La solución original es `ImportNet.sln`. Los comandos siguientes se ejecutan desde la subcarpeta `ImportNet`.
 
-```text
-ImportNet.sln
-ImportNet/
-  ImportNet.API/              Host, Controllers/Api, Controllers/Web, Views
-  ImportNet.Application/      UseCases/Categorias y Productos, MediatR
-  ImportNet.Domain/           Entidades e interfaces de persistencia
-  ImportNet.Infrastructure/   EF, Identity, repositorios y migraciones
-  ImportNet.Tests/            Pruebas de aplicación e integración HTTP
-  docs/                      Decisiones, estado y prueba manual
-```
+## Ejecución local y Rider
 
-## Preparación
-
-Requiere SDK .NET 10, PostgreSQL y la base **ImportNet ya existente**. No se crea ni se elimina la base automáticamente. No hay contraseñas en appsettings. Configura la conexión fuera del repositorio, sustituyendo el marcador solo en tu terminal local:
-
-En PowerShell puedes evitar escribir la contraseña en el historial de comandos. El siguiente script la pide oculta y envía JSON por entrada estándar a User Secrets; no guarda archivos temporales con credenciales:
+Se conservan los User Secrets `ImportNet-local-2026`; nunca se incluyen credenciales en appsettings. Si falta la conexión, ejecutar `scripts/Configurar-Conexion.ps1` (contraseña oculta). No se crean ni reinician bases automáticamente.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ./scripts/Configurar-Conexion.ps1
-```
-
-Como alternativa manual, usa el marcador siguiente únicamente en tu terminal local:
-
-```powershell
-dotnet user-secrets set "ConnectionStrings:ImportNet" "Host=localhost;Port=5432;Database=ImportNet;Username=postgres;Password=TU_CLAVE_LOCAL" --project ImportNet.API
-dotnet tool restore
+powershell -ExecutionPolicy Bypass -File ./scripts/Configurar-Jwt.ps1
 dotnet restore ../ImportNet.sln
 dotnet build ../ImportNet.sln --no-restore
-dotnet test ../ImportNet.sln --no-build
-```
-
-También se admite `ConnectionStrings__ImportNet` como variable de entorno. La factoría de diseño y el host leen el mismo identificador de secretos; las variables de entorno tienen prioridad. No ejecutes `user-secrets list` en logs compartidos.
-
-## Migración revisable
-
-`InitialCreate` y su snapshot están en `ImportNet.Infrastructure/Persistence/Migrations`. `docs/InitialCreate.sql` es el SQL de creación idempotente, sin datos ni credenciales. Antes de aplicar, comprueba con pgAdmin que la base correcta no contiene tablas de negocio preexistentes y revisa el SQL. La migración inicial crea tablas; su método Down, generado por EF, elimina las tablas creadas y **no debe ejecutarse sobre datos reales**.
-
-```powershell
-# Inspección de solo lectura: muestra tablas y migraciones, nunca la conexión ni contraseñas
-dotnet run --project ImportNet.API/ImportNet.API.csproj --launch-profile ImportNet -- --inspect-database
-# Inspeccionar/generar SQL: no modifica la base
-dotnet ef migrations script 0 InitialCreate --idempotent --project ImportNet.Infrastructure --startup-project ImportNet.API --output docs/InitialCreate.sql
-# Solo después de comprobar el esquema existente:
+dotnet run --project ImportNet.API --launch-profile ImportNet -- --inspect-database
+# Revisar historial/esquema y SQL antes de aplicar cambios pendientes:
 dotnet ef database update --project ImportNet.Infrastructure --startup-project ImportNet.API
-# Para cambios futuros del modelo:
-dotnet ef migrations add NombreDelCambio --project ImportNet.Infrastructure --startup-project ImportNet.API --output-dir Persistence/Migrations
+dotnet run --project ImportNet.API --launch-profile ImportNet
 ```
 
-El 07/11/2026 se inspeccionó la base PostgreSQL ImportNet: estaba vacía. Se aplicaron InitialCreate y EmployeeProfiles sin eliminar datos. También se ejecutaron pruebas reales con Npgsql/Kestrel, separadas de las pruebas SQLite. Consulta `docs/DIA-01-EMPLEADOS.md`.
+Rider: usar el proyecto ImportNet.API y perfil `ImportNet`. Swagger: http://localhost:5080/swagger. OpenAPI: http://localhost:5080/swagger/v1/swagger.json, exclusivamente en Development. La raíz `/` responde 404: el host sirve una API REST, sin vistas MVC.
 
-## Alta explícita del administrador
+`Configurar-Jwt.ps1` genera una clave criptográfica aleatoria de 64 bytes en User Secrets si no existe. Conserva claves existentes; no muestra sus valores. Configuración requerida: `Jwt:Issuer`, `Jwt:Audience`, `Jwt:SigningKey` (Base64, mínimo 32 bytes). En despliegues usar variables `Jwt__Issuer`, `Jwt__Audience`, `Jwt__SigningKey` y `ConnectionStrings__ImportNet`. No existe una clave de firma predeterminada. Cambiarla invalida todos los tokens.
 
-Después de aplicar las migraciones, crea el primer administrador con tus datos reales y una contraseña local. Este script pide nombres, apellidos, documento, correo, teléfono y contraseña oculta; guarda los valores en User Secrets, ejecuta el bootstrap de desarrollo y retira Bootstrap:Password al terminar. La contraseña necesita al menos 12 caracteres, mayúscula, minúscula, número y símbolo.
+## Autenticación y transición
+
+1. Ejecutar `POST /api/auth/login` con JSON `{ "email": "correo configurado localmente", "password": "contraseña vigente" }`.
+2. Copiar `accessToken` de la respuesta y pegarlo en **Authorize**, sin prefijo. Swagger envía `Authorization: Bearer ...`.
+3. Ejecutar `GET /api/auth/me`; devuelve usuario, empleado y roles, sin hashes ni sellos de seguridad.
+
+JWT HS256 dura dos horas y valida firma, emisor, audiencia y vencimiento sin tolerancia adicional. Cada petición contrasta empleado activo, roles y versión de acceso con PostgreSQL. Desactivar, modificar roles/perfil o cambiar la credencial invalida tokens anteriores. Cinco fallos de contraseña bloquean temporalmente la cuenta. El cliente termina su sesión descartando el token; no hay cookies, CSRF ni rutas `/cuenta/*`.
+
+Las tablas AspNetUsers/AspNetRoles/AspNetUserRoles y sus relaciones se conservan. Identity Core permanece únicamente como adaptador de almacenamiento, validación y administración transaccional; no autentica HTTP. Usuario/Rol/UsuarioRol son representaciones de dominio proyectadas por el adaptador, sin duplicar cuentas ni identificadores.
+
+Las cuentas anteriores usan su contraseña vigente: se verifica con el algoritmo Identity y, solo si es correcta, se guarda BCrypt. No se convierten hashes entre algoritmos ni se inventan contraseñas. Cuentas nuevas usan BCrypt desde el alta. Se utiliza BCrypt con costo 12 y prehash SHA-384 para evitar el límite de 72 bytes, identificado por `{bcrypt-sha384}`. No se publica el hash. El administrador local existente permanece intacto hasta su primer login correcto; no se solicitó ni se usó su contraseña para validar.
+
+Si no existe ningún Administrador activo:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ./scripts/Crear-Administrador.ps1
-dotnet run --project ImportNet.API/ImportNet.API.csproj --launch-profile ImportNet
 ```
 
-El bootstrap solo funciona en desarrollo, exige migraciones al día, crea los roles Administrador y Vendedor y asocia un Empleado al administrador dentro de una transacción. No cambia ni promueve cuentas existentes. No hay registro público ni contraseñas predeterminadas. Los siguientes empleados y sus roles se administran desde `/empleados`, exclusivamente por un Administrador.
+El script pide datos reales y contraseña oculta, ejecuta `--bootstrap-admin` y retira `Bootstrap:Password`. No hay claves conocidas. El bootstrap rechaza cuentas duplicadas y un segundo administrador inicial; posteriores cuentas se crean mediante `/api/empleados`. Se conserva la protección transaccional del último Administrador activo.
 
-Arranque desde terminal o configuración equivalente en Rider:
+## Endpoints
 
-```powershell
-dotnet run --project ImportNet.API/ImportNet.API.csproj --launch-profile ImportNet
-```
-
-Frontend: http://localhost:5080/ (redirige al login sin sesión). Login: http://localhost:5080/cuenta/login. Swagger: http://localhost:5080/swagger (solo Development). Documento: http://localhost:5080/swagger/v1/swagger.json. Bootstrap 5.3.8 se sirve localmente, sin depender de CDN en ejecución; licencia incluida.
-
-## API real
-
-| Método | Ruta | Política |
+| Método | Ruta | Permiso |
 | --- | --- | --- |
-| GET | `/api/categorias`, `/api/categorias/{id}` | Administrador, Vendedor |
+| POST | `/api/auth/login` | Anónimo |
+| GET | `/api/auth/me` | Usuario activo autenticado |
+| GET | `/api/categorias`, `/api/categorias/{id}` | Administrador/Vendedor |
 | POST | `/api/categorias` | Administrador |
 | PUT, DELETE | `/api/categorias/{id}` | Administrador |
-| GET | `/api/productos`, `/api/productos/{id}` | Administrador, Vendedor |
+| GET | `/api/productos`, `/api/productos/{id}` | Administrador/Vendedor |
 | POST | `/api/productos` | Administrador |
 | PUT, DELETE | `/api/productos/{id}` | Administrador |
 | GET, POST | `/api/empleados` | Administrador |
@@ -89,54 +60,31 @@ Frontend: http://localhost:5080/ (redirige al login sin sesión). Login: http://
 | PUT | `/api/empleados/{id}/roles` | Administrador |
 | GET | `/api/empleados/roles` | Administrador |
 
-Crear responde 201 con Location e id; editar/eliminar, 204. Validación 400; sin sesión 401; rol insuficiente 403; inexistente 404; duplicados/referencias 409. Errores de negocio usan ProblemDetails, sin detalles internos.
+Crear responde 201 con Location; modificar/eliminar 204; validación 400, sin token válido 401, sin permisos 403, inexistente 404 y conflicto 409. Errores de aplicación usan ProblemDetails sin detalles internos. No se borra físicamente ningún empleado.
 
-Ejemplo de cuerpo para crear producto (primero crea una categoría):
+Producto: `codigo` es el SKU único; `precioVenta` y `costoPromedio` están expresados en PEN. `costoImportacionUsd` y `tipoCambioImportacion` son referencias opcionales proporcionadas conjuntamente; tipo de cambio en PEN por USD. No convierten precios ni calculan stock/promedios. PUT sustituye ambos valores; omitirlos los deja vacíos. Costo promedio, costo USD y tipo de cambio solo se devuelven al Administrador.
 
 ```json
 {
-  "codigo": "USB-001",
-  "nombre": "Cable USB",
-  "descripcion": null,
-  "unidadMedida": "Unidad",
-  "peso": 0.125,
-  "precioVenta": 4.50,
-  "partidaArancelaria": "854442",
-  "categoriaId": 1,
-  "stockMinimo": 2
+  "codigo": "USB-001", "nombre": "Cable USB", "unidadMedida": "Unidad",
+  "precioVenta": 12.50, "categoriaId": 1, "stockMinimo": 2,
+  "costoImportacionUsd": 2.50, "tipoCambioImportacion": 3.85
 }
 ```
 
-Para probar en Swagger, usa el enlace **Iniciar sesión** de la descripción de la API y vuelve a Swagger en el mismo navegador. Pulsa **Try it out**, completa los datos y pulsa **Execute**. Swagger conserva la sesión del navegador y obtiene automáticamente un token CSRF nuevo antes de cada POST, PUT o DELETE. No hay que pegar contraseñas ni cookies en Authorize. Vendedor solo consulta; Administrador modifica. El cierre de sesión se realiza con el botón de MVC.
-
-Para otros clientes HTTP, usa `GET /cuenta/csrf` con tu sesión y envía el token como `X-CSRF-TOKEN`, conservando las cookies. Ese endpoint responde 401 sin sesión. La protección CSRF sigue siendo obligatoria también desde Swagger.
-
-Las vistas están en `/`, `/categorias`, `/productos`, `/categorias/crear`, `/productos/crear` y `/{modulo}/{id}/editar`. Los formularios guardan por POST `/{modulo}/guardar` y eliminan por POST `/{modulo}/{id}/eliminar`. Login y logout usan POST `/cuenta/login` y `/cuenta/logout`, con antiforgery.
-
-## Alcance
-
-Catálogo, empleados, perfiles, login y MVC funcionan en las pruebas automatizadas. La administración incluye búsqueda, alta con cuenta Identity, edición, roles y activación/desactivación lógica; no hay borrado físico de empleados. Inventario y ventas conservan su modelo inicial, sin endpoints ni transacciones de stock implementadas. Reportes y exportaciones quedan para siguientes jornadas. Consulta `docs/ESTADO.md`, `docs/DIA-01-EMPLEADOS.md` y `docs/DECISIONES.md`.
-
-El inventario completo de archivos está en `docs/ARCHIVOS.md` dentro de la carpeta de código `ImportNet`.
-
-## Pruebas adicionales de esta etapa
-
-La suite ordinaria usa SQLite transitorio e incluye arranque HTTP real con Kestrel. Las pruebas de PostgreSQL se habilitan explícitamente solo después de inspeccionar y migrar la base:
+## Validación
 
 ```powershell
-$env:IMPORTNET_POSTGRES_TESTS = "1"
+dotnet restore ../ImportNet.sln
+dotnet build ../ImportNet.sln --no-restore --configuration Release
+dotnet test ../ImportNet.sln --no-build --configuration Release
+dotnet list ../ImportNet.sln package --vulnerable --include-transitive
+# PostgreSQL real, datos temporales dentro de transacciones con rollback:
+$env:IMPORTNET_POSTGRES_TESTS = '1'
 dotnet test ../ImportNet.sln --filter Database=PostgreSQL
 Remove-Item Env:IMPORTNET_POSTGRES_TESTS
 ```
 
-Ejercitan login/logout, los dos roles y CRUD real mediante Kestrel/Npgsql. Cada caso abre una transacción y revierte sus usuarios, roles y registros de prueba; no modifica filas existentes. PostgreSQL puede avanzar secuencias aunque la transacción se revierta. No crean ni eliminan bases o tablas ni aplican migraciones automáticamente.
+La suite ordinaria usa SQLite efímero; PostgreSQL se habilita explícitamente y exige migraciones al día. No crea/elimina bases ni aplica migraciones. Las secuencias pueden avanzar incluso con rollback. Chrome es opcional: necesita Python/Playwright y Chrome local, con `IMPORTNET_BROWSER_TESTS=1`. Se pueden mantener esas herramientas en una carpeta temporal y añadirla a PYTHONPATH. La prueba usa botones reales de Swagger, sin trazas ni capturas con credenciales.
 
-El interceptor de Swagger tiene seis pruebas JavaScript sin dependencias npm:
-
-```powershell
-node --test ImportNet.Tests/swagger-auth.test.cjs
-```
-
-La prueba de navegador es opcional y necesita Python, Playwright y Chrome local. No guarda capturas, trazas ni credenciales. Para ejecutarla, instala Playwright en tu entorno de herramientas, establece `IMPORTNET_BROWSER_TESTS=1` y ejecuta `dotnet test ../ImportNet.sln --filter Browser=Chrome`. Si habilitas también PostgreSQL, la misma verificación de botones Swagger se ejecuta dentro de la transacción PostgreSQL del administrador. Las credenciales temporales viajan solo por memoria/entrada estándar. Las pruebas omitidas por falta de requisitos no cuentan como aprobadas.
-
-Configuración utilizada: [interceptores de Swagger UI](https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/) e [inyección de JavaScript de Swashbuckle](https://github.com/domaindrivendev/Swashbuckle.AspNetCore).
+GitHub Actions ejecuta restore/build/test en .NET 10. Inventario, compras, recepción, ventas transaccionales y reportes no tienen nuevos endpoints. Informe: `docs/INFORME-DIAS-02-03.md`; archivos: `docs/ARCHIVOS.md`. Los informes de los días 01 y de validación inicial son evidencia histórica y no instrucciones vigentes de autenticación.
