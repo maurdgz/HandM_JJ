@@ -8,6 +8,13 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("""
+                DO $$ BEGIN
+                  IF EXISTS (SELECT 1 FROM "Cliente") THEN
+                    RAISE EXCEPTION 'ClienteLocal requiere un mapeo de documentos y archivo de datos anteriores. No se eliminaron clientes.';
+                  END IF;
+                END $$;
+                """);
             migrationBuilder.DropColumn(
                 name: "Contacto",
                 table: "Cliente");

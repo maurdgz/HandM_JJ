@@ -8,6 +8,13 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("""
+                DO $$ BEGIN
+                  IF EXISTS (SELECT 1 FROM "Producto") THEN
+                    RAISE EXCEPTION 'PrecioUsd requiere conversion explicita a PEN. Defina precios antes de migrar; no se modificaron productos.';
+                  END IF;
+                END $$;
+                """);
             migrationBuilder.DropCheckConstraint(
                 name: "CK_Producto_Peso",
                 table: "Producto");

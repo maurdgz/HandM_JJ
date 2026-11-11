@@ -8,10 +8,15 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.InsertData(
-                table: "Almacen",
-                columns: new[] { "Id", "Nombre" },
-                values: new object[] { 1, "Principal" });
+            migrationBuilder.Sql("""
+                DO $$ BEGIN
+                  IF EXISTS (SELECT 1 FROM "Almacen" WHERE "Id" = 1 AND "Nombre" <> 'Principal') THEN
+                    RAISE EXCEPTION 'El almacen 1 ya existe con otro nombre; revise su identidad antes de migrar.';
+                  END IF;
+                END $$;
+                INSERT INTO "Almacen" ("Id", "Nombre") VALUES (1, 'Principal') ON CONFLICT ("Id") DO NOTHING;
+                SELECT setval(pg_get_serial_sequence('"Almacen"', 'Id'), GREATEST((SELECT max("Id") FROM "Almacen"), 1));
+                """);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

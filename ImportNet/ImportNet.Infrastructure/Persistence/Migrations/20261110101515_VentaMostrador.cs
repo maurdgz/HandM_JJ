@@ -10,6 +10,14 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("""
+                DO $$ BEGIN
+                  IF EXISTS (SELECT 1 FROM "OrdenVenta") OR EXISTS (SELECT 1 FROM "DetalleOrdenVenta")
+                     OR EXISTS (SELECT 1 FROM "MovimientoInventario" WHERE "OrdenVentaId" IS NOT NULL) THEN
+                    RAISE EXCEPTION 'VentaMostrador requiere preservar y mapear el historial existente. No se eliminaron ventas.';
+                  END IF;
+                END $$;
+                """);
             migrationBuilder.DropForeignKey(
                 name: "FK_MovimientoInventario_OrdenVenta_OrdenVentaId",
                 table: "MovimientoInventario");
