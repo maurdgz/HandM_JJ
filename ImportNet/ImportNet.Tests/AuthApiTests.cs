@@ -25,6 +25,13 @@ public sealed class AuthApiTests
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var token = await login.Content.ReadFromJsonAsync<TokenDto>();
         Assert.Equal("Bearer", token!.TokenType);
+        client.DefaultRequestHeaders.Authorization = new("Bearer", token.AccessToken);
+        var me = await client.GetFromJsonAsync<UsuarioDto>("/api/auth/me");
+        Assert.Equal(id, me!.Id);
+        Assert.Contains("Administrador", me.Roles);
+        var json = await client.GetStringAsync("/api/auth/me");
+        Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("stamp", json, StringComparison.OrdinalIgnoreCase);
         using var scope = factory.Services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         Assert.StartsWith("{bcrypt-sha384}", (await users.FindByIdAsync(id))!.PasswordHash);

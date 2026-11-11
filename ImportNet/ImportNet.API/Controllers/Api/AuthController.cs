@@ -13,4 +13,9 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType(200), ProducesResponseType(401)]
     public async Task<IActionResult> Login(LoginQuery query, CancellationToken ct)
         => Ok(await mediator.Send(query, ct));
+
+    [HttpGet("me"), Authorize]
+    [ProducesResponseType(200), ProducesResponseType(401)]
+    public async Task<IActionResult> Me(CancellationToken ct)
+        => Ok(await mediator.Send(new GetUsuarioActualQuery(), ct));
 }

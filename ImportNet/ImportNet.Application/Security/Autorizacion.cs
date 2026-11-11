@@ -9,6 +9,7 @@ public static class RolesImportNet
 
 public interface IUsuarioActual
 {
+    string? Id { get; }
     Task ExigirAdministrador(CancellationToken ct);
 }
 
