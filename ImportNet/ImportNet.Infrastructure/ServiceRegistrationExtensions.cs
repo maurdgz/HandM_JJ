@@ -18,6 +18,8 @@ public static class ServiceRegistrationExtensions
             ?? "Host=localhost;Database=ImportNet;Username=postgres"));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IEmpleadoRepository, EmpleadoRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddSingleton<ImportNet.Application.Security.IPasswordHasher, BcryptPasswordHasher>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUsuarioActual, UsuarioActual>();
         services.AddScoped<IAdministracionEmpleados, AdministracionEmpleados>();
@@ -26,6 +28,7 @@ public static class ServiceRegistrationExtensions
             o.User.RequireUniqueEmail = true;
             o.Lockout.MaxFailedAccessAttempts = 5;
         }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders().AddSignInManager<EmpleadoSignInManager>();
+        services.AddScoped<IPasswordHasher<ApplicationUser>, IdentityPasswordTransition>();
         services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
         services.ConfigureApplicationCookie(o => {
             o.LoginPath = "/cuenta/login";
