@@ -7,6 +7,8 @@ import type { UsuarioDto } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 
+import EmpleadosPage from "@/components/EmpleadosPage";
+
 export type AppView = "inicio" | "empleados";
 
 interface Props {
@@ -108,9 +110,7 @@ export default function AppShell({ view }: Props) {
           </>
         )}
 
-        {view === "empleados" && (
-          <h1 className="text-2xl font-semibold">Empleados</h1>
-        )}
+        {view === "empleados" && <EmpleadosPage />}
       </main>
 
       <Toaster />

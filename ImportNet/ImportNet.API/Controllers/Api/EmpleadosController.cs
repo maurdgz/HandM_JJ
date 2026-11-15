@@ -45,4 +45,13 @@ public sealed class EmpleadosController(IMediator mediator) : ControllerBase
         await mediator.Send(command with { Id = id }, ct);
         return NoContent();
     }
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> Eliminar(int id, CancellationToken ct)
+    {
+        await mediator.Send(new CambiarEstadoEmpleadoCommand(id, false), ct);
+        return NoContent();
+    }
 }
