@@ -35,4 +35,20 @@ public sealed class VentasController(IMediator mediator)
 
         return Ok(resultado);
     }
+
+    [HttpPost("{id:int}/anulacion")]
+    [Authorize(Policy = "Administracion")]
+    public async Task<IActionResult> Anular(
+        int id,
+        AnularVentaBody body,
+        CancellationToken ct)
+    {
+        await mediator.Send(
+            new AnularVentaCommand(id, body.Motivo),
+            ct);
+
+        return NoContent();
+    }
 }
+
+public sealed record AnularVentaBody(string Motivo);

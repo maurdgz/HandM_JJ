@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ImportNet.Application.Security;
 using ImportNet.Application.UseCases.Empleados;
+using ImportNet.Application.UseCases.Ventas;
+using ImportNet.Infrastructure.Services;
 
 namespace ImportNet.Infrastructure;
 
@@ -31,6 +33,7 @@ public static class ServiceRegistrationExtensions
             o.Lockout.MaxFailedAccessAttempts = 5;
         }).AddRoles<IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
         services.AddScoped<IPasswordHasher<ApplicationUser>, IdentityPasswordTransition>();
+        services.AddScoped<IAnulacionVentas, AnulacionVentas>();
         return services;
     }
 }
