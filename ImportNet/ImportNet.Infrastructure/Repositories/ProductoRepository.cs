@@ -38,6 +38,7 @@ internal sealed class ProductoRepository : GenericRepository<Producto>, IProduct
     {
         return await _context.Set<Inventario>().AnyAsync(i => i.ProductoId == id, ct)
             || await _context.Set<MovimientoInventario>().AnyAsync(m => m.ProductoId == id, ct)
+            || await _context.Set<DetalleCompra>().AnyAsync(d => d.ProductoId == id, ct)
             || await _context.Set<DetalleVenta>().AnyAsync(d => d.ProductoId == id, ct)
             || await _context.Set<ProveedorProducto>().AnyAsync(pp => pp.ProductoId == id, ct);
     }

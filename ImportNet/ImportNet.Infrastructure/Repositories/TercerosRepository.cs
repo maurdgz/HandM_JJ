@@ -23,7 +23,7 @@ internal sealed class TercerosRepository(AppDbContext db) : ITercerosRepository
     public async Task EliminarProveedor(int id, CancellationToken ct)
     {
         var p = await Proveedor(id, ct) ?? throw new NoEncontradoException("Proveedor no encontrado.");
-        if (await db.Set<MovimientoInventario>().AnyAsync(x => x.ProveedorId == id, ct)) throw new ConflictoException("El proveedor tiene historial.");
+        if (await db.Set<Compra>().AnyAsync(x => x.ProveedorId == id, ct) || await db.Set<MovimientoInventario>().AnyAsync(x => x.ProveedorId == id, ct)) throw new ConflictoException("El proveedor tiene historial.");
         db.RemoveRange(await db.Set<ProveedorProducto>().Where(x => x.ProveedorId == id).ToListAsync(ct)); db.Remove(p);
     }
     public async Task<IReadOnlyList<Cliente>> Clientes(string? texto, CancellationToken ct) => await db.Set<Cliente>().AsNoTracking().Where(x => texto == null || x.Nombre.ToLower().Contains(texto.ToLower()) || x.NumeroDocumento.Contains(texto)).OrderBy(x => x.Nombre).ThenBy(x => x.Id).Take(100).ToListAsync(ct);

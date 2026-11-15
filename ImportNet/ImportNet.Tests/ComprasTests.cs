@@ -25,6 +25,15 @@ public sealed class ComprasTests
         Assert.Equal(7, (await f.Db.Set<Inventario>().SingleAsync()).Cantidad);
         Assert.Equal(0, (await f.Db.Set<Producto>().SingleAsync()).CostoPromedio);
     }
+    [Fact] public async Task Eliminar_BorradorBorraLineasSinTocarInventario()
+    {
+        using var f = new ApplicationFixture(); var datos = await Datos(f);
+        var compra = await f.Mediator.Send(new CrearCompraCommand(datos)); f.Db.ChangeTracker.Clear();
+        await f.Mediator.Send(new EliminarCompraCommand(compra.Id));
+        Assert.Empty(await f.Db.Set<Compra>().ToListAsync()); Assert.Empty(await f.Db.Set<DetalleCompra>().ToListAsync());
+        Assert.Equal(7, (await f.Db.Set<Inventario>().SingleAsync()).Cantidad);
+        Assert.Equal(0, (await f.Db.Set<Producto>().SingleAsync()).CostoPromedio); Assert.Empty(await f.Db.Set<MovimientoInventario>().ToListAsync());
+    }
     [Fact] public async Task Crear_AtomicoConTotalesYConsultas()
     {
         using var f = new ApplicationFixture(); var datos = await Datos(f);

@@ -11,6 +11,7 @@ internal sealed class CompraRepository(AppDbContext db) : ICompraRepository
         // Force header UPDATE even when only lines changed, so xmin detects concurrent receipt/edit.
         db.Entry(compra).Property(x => x.TipoCambio).IsModified = true;
     }
+    public void Eliminar(Compra compra) { compra.ExigirBorrador(); db.Remove(compra); }
     public void Agregar(Compra compra) => db.Add(compra);
     public async Task<Pagina<Compra>> Listar(int pagina, int tamano, CancellationToken ct)
     {
