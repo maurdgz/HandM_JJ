@@ -32,8 +32,13 @@ public sealed class RecuperacionTests
         var id = await f.Mediator.Send(new CreateProductoCommand("OLLA", "Olla acero", null, "Unidad", null, 10, null, cat, 2));
         var p = await f.Mediator.Send(new BuscarProductosQuery("olla", cat, true, 1, 1));
         Assert.Equal(1, p.Count); Assert.Equal(id, Assert.Single(p.Items).Id);
-        f.Db.Attach(new MovimientoInventario { Id = 99, ProductoId = id });
-        // Reference guard is covered with a real relational inventory in CatalogoTests.
+        var usuario = new ImportNet.Infrastructure.Identity.ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "movimiento@example.test", Email = "movimiento@example.test" };
+        f.Db.Add(usuario);
+        var empleado = new Empleado { UsuarioId = usuario.Id, Nombre = "Prueba", Apellidos = "Movimiento", Cargo = "Administrador", Area = "QA" };
+        f.Db.Add(empleado); await f.Db.SaveChangesAsync();
+        f.Db.Add(new MovimientoInventario { ProductoId = id, AlmacenId = Almacen.PrincipalId, EmpleadoId = empleado.Id, Tipo = TipoMovimiento.Entrada, Cantidad = 1 });
+        await f.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<ConflictoException>(() => f.Mediator.Send(new DeleteProductoCommand(id)));
         await Assert.ThrowsAsync<ConflictoException>(() => f.Mediator.Send(new CreateProductoCommand("OLLA", "Otra", null, "Unidad", null, 10, null, cat, 0)));
     }
     [Fact] public async Task Terceros_ValidaDocumentosYRelacionSinDuplicarSeed()
