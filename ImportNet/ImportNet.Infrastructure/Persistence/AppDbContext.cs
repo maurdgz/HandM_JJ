@@ -96,6 +96,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         });
         foreach (var fk in b.Model.GetEntityTypes().SelectMany(x => x.GetForeignKeys()))
             fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.Entity<Compra>().HasMany(x => x.Lineas).WithOne().HasForeignKey(x => x.CompraId).OnDelete(DeleteBehavior.Cascade);
+        if (Database.IsNpgsql()) b.Entity<Compra>().Property(x => x.Version).IsRowVersion();
+        else b.Entity<Compra>().Ignore(x => x.Version);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken ct = default)
@@ -110,6 +113,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     }
     private void ValidarInmutabilidad()
     {
+        if (ChangeTracker.Entries<Compra>().Any(x => x.State is EntityState.Modified or EntityState.Deleted && x.OriginalValues.GetValue<EstadoCompra>(nameof(Compra.Estado)) == EstadoCompra.Recibida))
+            throw new ConflictoException("Una compra recibida es inmutable.");
         if (ChangeTracker.Entries<MovimientoInventario>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
             throw new ReglaNegocioException("Los movimientos son inmutables; registre un ajuste.");
     }
