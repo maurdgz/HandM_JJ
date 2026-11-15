@@ -6,5 +6,7 @@ public interface IUnitOfWork
     ITercerosRepository Terceros { get; }
     ICategoriaRepository Categorias { get; }
     IProductoRepository Productos { get; }
+    IVentaRepository Ventas { get; }
+
     Task<int> Guardar(CancellationToken ct);
 }
