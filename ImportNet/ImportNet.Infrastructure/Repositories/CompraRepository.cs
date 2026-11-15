@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ImportNet.Infrastructure.Repositories;
 internal sealed class CompraRepository(AppDbContext db) : ICompraRepository
 {
+    public void Agregar(Compra compra) => db.Add(compra);
     public async Task<Pagina<Compra>> Listar(int pagina, int tamano, CancellationToken ct)
     {
         var q = db.Set<Compra>().AsNoTracking(); var count = await q.CountAsync(ct);
