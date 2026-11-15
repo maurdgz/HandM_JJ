@@ -5,6 +5,12 @@ using Microsoft.EntityFrameworkCore;
 namespace ImportNet.Infrastructure.Repositories;
 internal sealed class CompraRepository(AppDbContext db) : ICompraRepository
 {
+    public void MarcarEdicion(Compra compra)
+    {
+        compra.ExigirBorrador();
+        // Force header UPDATE even when only lines changed, so xmin detects concurrent receipt/edit.
+        db.Entry(compra).Property(x => x.TipoCambio).IsModified = true;
+    }
     public void Agregar(Compra compra) => db.Add(compra);
     public async Task<Pagina<Compra>> Listar(int pagina, int tamano, CancellationToken ct)
     {

@@ -14,6 +14,17 @@ public sealed class ComprasTests
         f.Db.Add(new Inventario { ProductoId = p.Id, AlmacenId = Almacen.PrincipalId, Cantidad = 7 }); await f.Db.SaveChangesAsync();
         return new(proveedor.Id, DateTime.UtcNow, 3.75m, 10, 5, [new(p.Id, 2, 10)]);
     }
+    [Fact] public async Task Editar_ReemplazaLineasYRecalculaSinCambiarStock()
+    {
+        using var f = new ApplicationFixture(); var datos = await Datos(f);
+        var compra = await f.Mediator.Send(new CrearCompraCommand(datos)); f.Db.ChangeTracker.Clear();
+        var editada = await f.Mediator.Send(new EditarCompraCommand(compra.Id, datos with { TipoCambio = 4, Lineas = [new(datos.Lineas[0].ProductoId, 3, 10)] }));
+        Assert.Equal(135, editada.TotalPen); f.Db.ChangeTracker.Clear();
+        Assert.Equal(135, (await f.Mediator.Send(new ObtenerCompraQuery(compra.Id))).TotalPen);
+        Assert.Equal(1, await f.Db.Set<DetalleCompra>().CountAsync());
+        Assert.Equal(7, (await f.Db.Set<Inventario>().SingleAsync()).Cantidad);
+        Assert.Equal(0, (await f.Db.Set<Producto>().SingleAsync()).CostoPromedio);
+    }
     [Fact] public async Task Crear_AtomicoConTotalesYConsultas()
     {
         using var f = new ApplicationFixture(); var datos = await Datos(f);
