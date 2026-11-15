@@ -8,6 +8,23 @@ using Xunit;
 namespace ImportNet.Tests;
 public sealed class RecuperacionTests
 {
+    [Fact] public async Task Api_RolesCostosYClientes()
+    {
+        using var factory = new SmokeFactory(); using var anon = factory.CreateClient(); using var seller = factory.CreateClient(); using var admin = factory.CreateClient();
+        factory.InitializeSchema();
+        await SmokeTests.Login(factory, seller, "Vendedor"); await SmokeTests.Login(factory, admin, "Administrador");
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await seller.GetAsync("/api/proveedores")).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await seller.GetAsync("/api/empleados")).StatusCode);
+        var cliente = new GuardarClienteCommand(0, TipoDocumento.Dni, "87654321", "Local", null);
+        Assert.Equal(System.Net.HttpStatusCode.Created, (await System.Net.Http.Json.HttpClientJsonExtensions.PostAsJsonAsync(seller, "/api/clientes", cliente)).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.OK, (await seller.GetAsync("/api/clientes?texto=Local")).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await System.Net.Http.Json.HttpClientJsonExtensions.PutAsJsonAsync(seller, "/api/clientes/2", cliente)).StatusCode);
+        using var scope = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.CreateScope(factory.Services);
+        var db = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ImportNet.Infrastructure.Persistence.AppDbContext>(scope.ServiceProvider);
+        var categoria = new Categoria("Menaje"); db.Add(categoria); await db.SaveChangesAsync();
+        db.Add(new Producto("OLLA", "Olla", null, "Unidad", null, 15, null, categoria.Id, 0)); await db.SaveChangesAsync();
+        var json = await seller.GetStringAsync("/api/productos"); Assert.DoesNotContain("costoPromedio", json); Assert.DoesNotContain("costoImportacionUsd", json);
+    }
     [Fact] public async Task Catalogo_FiltraOllaPaginaYNoBorraMovimientos()
     {
         using var f = new ApplicationFixture();
