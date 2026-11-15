@@ -80,8 +80,8 @@ export default function AppShell({ view }: Props) {
             Inicio
           </a>
 
-          <a href="/productos">Productos</a><a href="/categorias">Categor?as</a><a href="/clientes">Clientes</a>
-          {isAdmin && <><a href="/proveedores">Proveedores</a><a href="/compras">Compras de importaci?n</a></>}
+          <a href="/productos">Productos</a><a href="/categorias">Categorías</a><a href="/clientes">Clientes</a>
+          {isAdmin && <><a href="/proveedores">Proveedores</a><a href="/compras">Compras de importación</a></>}
           {isAdmin && (
             <a href="/empleados" className="rounded px-2 py-2 hover:bg-slate-200">
               Empleados

@@ -72,7 +72,9 @@ public sealed class ComprasApiTests
         var c = (await response.Content.ReadFromJsonAsync<CompraDto>())!; Assert.Equal(91, c.TotalPen); Assert.Equal("Borrador", c.Estado);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(response.Headers.Location)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/compras")).StatusCode);
-        var editada = await client.PutAsJsonAsync($"/api/compras/{c.Id}", datos with { FletePen = 20 }); Assert.Equal(HttpStatusCode.OK, editada.StatusCode);
+        var roundTrip = (await client.GetFromJsonAsync<CompraDatos>($"/api/compras/{c.Id}"))!;
+        Assert.Equal(DateTimeKind.Utc, roundTrip.Fecha.Kind);
+        var editada = await client.PutAsJsonAsync($"/api/compras/{c.Id}", roundTrip with { FletePen = 20 }); Assert.Equal(HttpStatusCode.OK, editada.StatusCode);
         Assert.Equal(101, (await editada.Content.ReadFromJsonAsync<CompraDto>())!.TotalPen);
         Assert.Contains("/api/compras", await client.GetStringAsync("/swagger/v1/swagger.json"));
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/compras/{c.Id}")).StatusCode);
