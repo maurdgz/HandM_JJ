@@ -107,6 +107,113 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Cliente_TipoDocumento", "\"TipoDocumento\" IN (0, 1)");
                         });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nombre = "Cliente varios",
+                            NumeroDocumento = "00000000",
+                            TipoDocumento = 0
+                        });
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.Compra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AduanaPen")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("FletePen")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("ProveedorId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TipoCambio")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProveedorId");
+
+                    b.HasIndex("Fecha", "Id");
+
+                    b.ToTable("Compra", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Compra_Estado", "\"Estado\" IN (0, 1)");
+
+                            t.HasCheckConstraint("CK_Compra_Importes", "\"TipoCambio\" > 0 AND \"FletePen\" >= 0 AND \"AduanaPen\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.DetalleCompra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AduanaPen")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<int>("CompraId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CostoUnitarioUsd")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("FletePen")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("MercaderiaPen")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductoId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompraId");
+
+                    b.HasIndex("ProductoId");
+
+                    b.ToTable("DetalleCompra", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DetalleCompra_Importes", "\"Cantidad\" > 0 AND \"CostoUnitarioUsd\" > 0 AND \"MercaderiaPen\" >= 0 AND \"FletePen\" >= 0 AND \"AduanaPen\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("ImportNet.Domain.Entities.DetalleVenta", b =>
@@ -717,6 +824,30 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ImportNet.Domain.Entities.Compra", b =>
+                {
+                    b.HasOne("ImportNet.Domain.Entities.Proveedor", null)
+                        .WithMany()
+                        .HasForeignKey("ProveedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.DetalleCompra", b =>
+                {
+                    b.HasOne("ImportNet.Domain.Entities.Compra", null)
+                        .WithMany("Lineas")
+                        .HasForeignKey("CompraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ImportNet.Domain.Entities.Producto", null)
+                        .WithMany()
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ImportNet.Domain.Entities.DetalleVenta", b =>
                 {
                     b.HasOne("ImportNet.Domain.Entities.Producto", null)
@@ -805,7 +936,7 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.HasOne("ImportNet.Domain.Entities.Proveedor", null)
-                        .WithMany()
+                        .WithMany("Suministros")
                         .HasForeignKey("ProveedorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -874,6 +1005,16 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.Compra", b =>
+                {
+                    b.Navigation("Lineas");
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.Proveedor", b =>
+                {
+                    b.Navigation("Suministros");
                 });
 #pragma warning restore 612, 618
         }

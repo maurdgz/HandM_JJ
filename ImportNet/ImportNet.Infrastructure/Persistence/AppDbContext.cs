@@ -46,11 +46,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         b.Entity<ProveedorProducto>(e => {
             e.ToTable("ProveedorProducto");
             e.HasKey(x => new { x.ProveedorId, x.ProductoId });
-            e.HasOne<Proveedor>().WithMany().HasForeignKey(x => x.ProveedorId);
+            e.HasOne<Proveedor>().WithMany(x => x.Suministros).HasForeignKey(x => x.ProveedorId);
             e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId);
         });
         b.Entity<Cliente>(e => {
             e.ToTable("Cliente", t => t.HasCheckConstraint("CK_Cliente_TipoDocumento", "\"TipoDocumento\" IN (0, 1)"));
+            e.HasData(new Cliente { Id = 1, TipoDocumento = TipoDocumento.Dni, NumeroDocumento = "00000000", Nombre = "Cliente varios" });
             e.Property(x => x.NumeroDocumento).HasMaxLength(11);
             e.Property(x => x.Telefono).HasMaxLength(20);
             e.HasIndex(x => x.NumeroDocumento).IsUnique();
@@ -95,6 +96,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         });
         foreach (var fk in b.Model.GetEntityTypes().SelectMany(x => x.GetForeignKeys()))
             fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.Entity<Compra>().HasMany(x => x.Lineas).WithOne().HasForeignKey(x => x.CompraId).OnDelete(DeleteBehavior.Cascade);
+        if (Database.IsNpgsql()) b.Entity<Compra>().Property(x => x.Version).IsRowVersion();
+        else b.Entity<Compra>().Ignore(x => x.Version);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken ct = default)
@@ -109,6 +113,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     }
     private void ValidarInmutabilidad()
     {
+        if (ChangeTracker.Entries<Compra>().Any(x => x.State is EntityState.Modified or EntityState.Deleted && x.OriginalValues.GetValue<EstadoCompra>(nameof(Compra.Estado)) == EstadoCompra.Recibida))
+            throw new ConflictoException("Una compra recibida es inmutable.");
         if (ChangeTracker.Entries<MovimientoInventario>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
             throw new ReglaNegocioException("Los movimientos son inmutables; registre un ajuste.");
     }
