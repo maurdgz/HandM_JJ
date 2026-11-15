@@ -13,10 +13,12 @@ internal sealed class UnitOfWork : IUnitOfWork
     public UnitOfWork(AppDbContext context)
     {
         _context = context;
+        Terceros = new TercerosRepository(context);
         Categorias = new CategoriaRepository(context);
         Productos = new ProductoRepository(context);
     }
 
+    public ITercerosRepository Terceros { get; }
     public ICategoriaRepository Categorias { get; }
     public IProductoRepository Productos { get; }
 

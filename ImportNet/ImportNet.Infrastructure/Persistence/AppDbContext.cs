@@ -46,11 +46,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         b.Entity<ProveedorProducto>(e => {
             e.ToTable("ProveedorProducto");
             e.HasKey(x => new { x.ProveedorId, x.ProductoId });
-            e.HasOne<Proveedor>().WithMany().HasForeignKey(x => x.ProveedorId);
+            e.HasOne<Proveedor>().WithMany(x => x.Suministros).HasForeignKey(x => x.ProveedorId);
             e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId);
         });
         b.Entity<Cliente>(e => {
             e.ToTable("Cliente", t => t.HasCheckConstraint("CK_Cliente_TipoDocumento", "\"TipoDocumento\" IN (0, 1)"));
+            e.HasData(new Cliente { Id = 1, TipoDocumento = TipoDocumento.Dni, NumeroDocumento = "00000000", Nombre = "Cliente varios" });
             e.Property(x => x.NumeroDocumento).HasMaxLength(11);
             e.Property(x => x.Telefono).HasMaxLength(20);
             e.HasIndex(x => x.NumeroDocumento).IsUnique();

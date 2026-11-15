@@ -44,3 +44,4 @@ test-results/
 node_modules/
 .astro/
 dist/
+.npm-cache/

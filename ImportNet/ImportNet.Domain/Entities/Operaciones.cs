@@ -41,6 +41,7 @@ public sealed class MovimientoInventario
 public enum TipoProveedor { Nacional, Internacional }
 public sealed class Proveedor
 {
+    public List<ProveedorProducto> Suministros { get; set; } = [];
     public int Id { get; set; }
     public string Nombre { get; set; } = "";
     public TipoProveedor Tipo { get; set; }

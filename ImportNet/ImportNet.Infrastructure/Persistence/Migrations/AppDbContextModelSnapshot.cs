@@ -107,6 +107,15 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Cliente_TipoDocumento", "\"TipoDocumento\" IN (0, 1)");
                         });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nombre = "Cliente varios",
+                            NumeroDocumento = "00000000",
+                            TipoDocumento = 0
+                        });
                 });
 
             modelBuilder.Entity("ImportNet.Domain.Entities.DetalleVenta", b =>
@@ -805,7 +814,7 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.HasOne("ImportNet.Domain.Entities.Proveedor", null)
-                        .WithMany()
+                        .WithMany("Suministros")
                         .HasForeignKey("ProveedorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -874,6 +883,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ImportNet.Domain.Entities.Proveedor", b =>
+                {
+                    b.Navigation("Suministros");
                 });
 #pragma warning restore 612, 618
         }
