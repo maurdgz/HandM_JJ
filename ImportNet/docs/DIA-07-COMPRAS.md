@@ -74,6 +74,40 @@ npm run check
 npm run build
 ```
 
-Hasta el hito 14: 17 pruebas esenciales de Compras aprobadas y 4 pruebas PostgreSQL aprobadas. Frontend check/build aprobados sin errores ni warnings, con avisos de deprecación. Swagger ejecutado en Chrome. La prueba adicional del flujo Astro está en cierre; no se presenta como aprobada en este corte.
+Verificación final: build Release aprobado sin warnings ni errores; suite ordinaria con 49 pruebas correctas y 5 opcionales omitidas. Las 4 pruebas habilitadas de PostgreSQL pasaron con rollback. Frontend check/build aprobados sin errores ni warnings, con 10 avisos de deprecación.
 
-PR de entrega: https://github.com/maurdgz/HandM_JJ/pull/6. CI .NET y Frontend aprobados para `61cc693`; revisar también el SHA final después de publicar la documentación y las pruebas de navegador. No hacer squash ni reescribir los commits del equipo.
+Chrome: Swagger login/Authorize/catálogo aprobado; Astro login→crear→editar→consultar recibida→eliminar aprobado, con comprobación de Vendedor bloqueado y limpieza de sesión ante 401. El fixture verifica también que stock, costo promedio y movimientos permanecen intactos. El caso GET→PUT detectó la pérdida de Kind UTC en SQLite; `acdb87c` normaliza la fecha del DTO a UTC y añade su regresión. No cambia autenticación ni ventas.
+
+La prueba opcional de Astro usa API Kestrel y SQLite temporales, usuarios ficticios y `astro dev --background`, que se detiene al finalizar. Requiere Chrome local y Python Playwright. Las credenciales viajan por stdin; no se guardan tokens ni capturas.
+
+```powershell
+$env:IMPORTNET_BROWSER_TESTS = '1'
+dotnet test ImportNet.sln --no-build --configuration Release --filter 'Browser=Chrome'
+```
+
+En este equipo, Windows Application Control bloqueó DLL generadas por un compilador persistente iniciado en el sandbox. Se cerraron los build servers y se compiló Release con procesos nuevos y permiso de ejecución externo; las pruebas posteriores pasaron. No se modificó la política de Windows.
+
+## Commits progresivos del Día 07
+
+Los 15 hitos originales se registraron al terminar cada bloque, antes de comenzar el siguiente; no se dividió el trabajo al final:
+
+1. `2ae87f4` cabecera y líneas.
+2. `ad6de72` validaciones y borrador.
+3. `411215b` cálculo PEN.
+4. `3d030a3` prorrateo y centavos.
+5. `27f4f8d` mapeo y migración.
+6. `2242e48` consultas por repositorio.
+7. `3053dee` creación atómica.
+8. `412e3e9` edición y recálculo.
+9. `eb9b93f` eliminación de borradores.
+10. `9932712` API Administrador.
+11. `370e63a` navegación y listado.
+12. `01b530e` formulario y líneas.
+13. `b62ca82` resumen y guardado.
+14. `61cc693` permisos, inmutabilidad y stock.
+15. `4351791` guía y contrato de recepción.
+16. `acdb87c` fecha UTC y prueba Astro Chrome.
+
+El commit posterior de cierre de evidencias completa 17 commits propios de Compras. Los commits de recuperación, el merge de frontend y la prueba complementaria de recuperación se registran aparte y no se suman a esos 17.
+
+PR de entrega: https://github.com/maurdgz/HandM_JJ/pull/6. Se revisa CI .NET y Frontend en el SHA final antes de fusionar mediante merge commit a main, autorizado expresamente por el responsable durante la ejecución. No hacer squash ni reescribir los commits del equipo.
