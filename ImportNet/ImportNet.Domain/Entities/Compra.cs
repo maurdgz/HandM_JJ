@@ -9,6 +9,9 @@ public sealed class Compra
     public decimal FletePen { get; private set; }
     public decimal AduanaPen { get; private set; }
     public EstadoCompra Estado { get; private set; } = EstadoCompra.Borrador;
+    public decimal SubtotalUsd => Lineas.Sum(x => x.SubtotalUsd);
+    public decimal MercaderiaPen => Lineas.Sum(x => x.MercaderiaPen);
+    public decimal TotalPen => Lineas.Sum(x => x.TotalPen);
     public uint Version { get; private set; }
     private readonly List<DetalleCompra> _lineas = [];
     public IReadOnlyList<DetalleCompra> Lineas => _lineas.AsReadOnly();
@@ -24,6 +27,8 @@ public sealed class Compra
         if (lineas is null || lineas.Count == 0 || lineas.Count > 100 || lineas.Any(x => x is null)) throw new ReglaNegocioException("Indique de 1 a 100 lineas.");
         if (lineas.Select(x => x.ProductoId).Distinct().Count() != lineas.Count) throw new ReglaNegocioException("No repita productos en una compra.");
         var nuevas = lineas.Select((x, i) => new DetalleCompra(i + 1, x.ProductoId, x.Cantidad, x.CostoUnitarioUsd)).ToList();
+        var costos = CalculadoraCostoImportacion.Calcular(lineas, tipoCambio, fletePen, aduanaPen);
+        for (var i = 0; i < nuevas.Count; i++) nuevas[i].AsignarCostos(costos.Lineas[i]);
         ProveedorId = proveedorId; Fecha = fecha; TipoCambio = tipoCambio; FletePen = fletePen; AduanaPen = aduanaPen;
         _lineas.Clear(); _lineas.AddRange(nuevas);
     }
@@ -45,6 +50,13 @@ public sealed class DetalleCompra
     public int ProductoId { get; private set; }
     public decimal Cantidad { get; private set; }
     public decimal CostoUnitarioUsd { get; private set; }
+    public decimal MercaderiaPen { get; private set; }
+    public decimal FletePen { get; private set; }
+    public decimal AduanaPen { get; private set; }
+    public decimal TotalPen => MercaderiaPen + FletePen + AduanaPen;
+    public decimal CostoUnitarioPuestoPen => TotalPen / Cantidad;
+    internal void AsignarCostos(CostoLineaImportacion costo)
+    { MercaderiaPen = costo.MercaderiaPen; FletePen = costo.FletePen; AduanaPen = costo.AduanaPen; }
     public decimal SubtotalUsd => Cantidad * CostoUnitarioUsd;
     private DetalleCompra() { }
     internal DetalleCompra(int orden, int productoId, decimal cantidad, decimal costoUnitarioUsd)
