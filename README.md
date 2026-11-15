@@ -45,3 +45,4 @@ La suite normal usa SQLite en memoria. La prueba en Chrome es opcional (`IMPORTN
 - [Estado y desviaciones del plan](ImportNet/docs/ESTADO.md)
 - [Decisiones vigentes](ImportNet/docs/DECISIONES.md)
 - [Prueba manual y endpoints](ImportNet/docs/PRUEBA-MANUAL.md)
+- [Día 07: compras, costos y contrato para recepción](ImportNet/docs/DIA-07-COMPRAS.md)
