@@ -14,6 +14,12 @@ public sealed class ProductosController(IMediator mediator) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Listar(CancellationToken ct)
         => Ok((await mediator.Send(new GetAllProductosQuery(), ct)).Select(p => ProductoDto.Desde(p, User.IsInRole(RolesImportNet.Administrador))));
+    [HttpGet("buscar")]
+    public async Task<IActionResult> Buscar([FromQuery] BuscarProductosQuery query, CancellationToken ct)
+    {
+        var p = await mediator.Send(query, ct);
+        return Ok(new { items = p.Items.Select(x => ProductoDto.Desde(x, User.IsInRole(RolesImportNet.Administrador))), p.Count, p.PaginaActual, p.Tamano });
+    }
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Obtener(int id, CancellationToken ct)
         => Ok(ProductoDto.Desde(await mediator.Send(new GetProductoByIdQuery(id), ct), User.IsInRole(RolesImportNet.Administrador)));
