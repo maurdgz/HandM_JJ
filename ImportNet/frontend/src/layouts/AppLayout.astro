@@ -1,0 +1,15 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import AppShell, { type AppView } from "@/components/AppShell";
+
+interface Props {
+  title: string;
+  view: AppView;
+}
+
+const { title, view } = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <AppShell view={view} client:only="react" />
+</BaseLayout>

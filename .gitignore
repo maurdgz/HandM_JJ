@@ -39,3 +39,8 @@ __pycache__/
 *.py[cod]
 playwright-report/
 test-results/
+
+# Frontend
+node_modules/
+.astro/
+dist/
