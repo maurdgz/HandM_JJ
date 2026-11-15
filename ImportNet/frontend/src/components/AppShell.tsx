@@ -7,10 +7,11 @@ import type { UsuarioDto } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 
+import ComprasPage from "@/components/ComprasPage";
 import CatalogosPage from "@/components/CatalogosPage";
 import EmpleadosPage from "@/components/EmpleadosPage";
 
-export type AppView = "inicio" | "empleados" | "productos" | "categorias" | "proveedores" | "clientes";
+export type AppView = "compras" | "inicio" | "empleados" | "productos" | "categorias" | "proveedores" | "clientes";
 
 interface Props {
   view: AppView;
@@ -80,7 +81,7 @@ export default function AppShell({ view }: Props) {
           </a>
 
           <a href="/productos">Productos</a><a href="/categorias">Categor?as</a><a href="/clientes">Clientes</a>
-          {isAdmin && <a href="/proveedores">Proveedores</a>}
+          {isAdmin && <><a href="/proveedores">Proveedores</a><a href="/compras">Compras de importaci?n</a></>}
           {isAdmin && (
             <a href="/empleados" className="rounded px-2 py-2 hover:bg-slate-200">
               Empleados
@@ -113,6 +114,7 @@ export default function AppShell({ view }: Props) {
           </>
         )}
 
+        {view === "compras" && (isAdmin ? <ComprasPage /> : <p role="alert">Acceso restringido a Administrador.</p>)}
         {view === "empleados" && (isAdmin ? <EmpleadosPage /> : <p role="alert">Acceso restringido.</p>)}
         {(view === "productos" || view === "categorias" || view === "proveedores" || view === "clientes") && <CatalogosPage modulo={view} admin={isAdmin} />}
       </main>
