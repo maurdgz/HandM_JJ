@@ -28,6 +28,7 @@ internal sealed class TercerosRepository(AppDbContext db) : ITercerosRepository
     }
     public async Task<IReadOnlyList<Cliente>> Clientes(string? texto, CancellationToken ct) => await db.Set<Cliente>().AsNoTracking().Where(x => texto == null || x.Nombre.ToLower().Contains(texto.ToLower()) || x.NumeroDocumento.Contains(texto)).OrderBy(x => x.Nombre).ThenBy(x => x.Id).Take(100).ToListAsync(ct);
     public Task<Cliente?> Cliente(int id, CancellationToken ct) => db.Set<Cliente>().SingleOrDefaultAsync(x => x.Id == id, ct);
+    public Task<Cliente?> BuscarPorDocumento(string documento, CancellationToken ct) => db.Set<Cliente>().AsNoTracking().SingleOrDefaultAsync(x => x.NumeroDocumento == documento, ct);
     public Task<bool> DocumentoExiste(string documento, int id, CancellationToken ct) => db.Set<Cliente>().AnyAsync(x => x.NumeroDocumento == documento && x.Id != id, ct);
     public void AgregarCliente(Cliente c) => db.Add(c);
     public async Task EliminarCliente(int id, CancellationToken ct)

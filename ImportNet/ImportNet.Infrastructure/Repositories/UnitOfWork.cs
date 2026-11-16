@@ -21,6 +21,8 @@ internal sealed class UnitOfWork : IUnitOfWork
 
     public ICompraRepository Compras { get; }
     public ITercerosRepository Terceros { get; }
+    public IClienteRepository Clientes => Terceros;
+    public IProveedorRepository Proveedores => Terceros;
     public ICategoriaRepository Categorias { get; }
     public IProductoRepository Productos { get; }
 
