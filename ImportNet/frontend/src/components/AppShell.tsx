@@ -115,7 +115,8 @@ export default function AppShell({ view }: Props) {
         )}
 
         {view === "compras" && (isAdmin ? <ComprasPage /> : <p role="alert">Acceso restringido a Administrador.</p>)}
-        {view === "empleados" && (isAdmin ? <EmpleadosPage /> : <p role="alert">Acceso restringido.</p>)}
+        {/* La API decide el acceso también al entrar por URL directa. */}
+        {view === "empleados" && <EmpleadosPage />}
         {(view === "productos" || view === "categorias" || view === "proveedores" || view === "clientes") && <CatalogosPage modulo={view} admin={isAdmin} />}
       </main>
 
