@@ -1,4 +1,4 @@
-﻿# ImportNet
+# ImportNet
 
 API REST para la gestión de una tienda importadora: catálogo, empleados y roles, autenticación JWT.
 
@@ -39,6 +39,17 @@ $env:IMPORTNET_POSTGRES_TESTS = '1'; dotnet test ../ImportNet.sln --filter Datab
 ```
 
 La suite normal usa SQLite en memoria. La prueba en Chrome es opcional (`IMPORTNET_BROWSER_TESTS=1`, requiere Python y Playwright).
+
+## Proveedores y clientes (issue #5)
+
+Las páginas `/proveedores` y `/clientes` incluyen buscador. El administrador gestiona proveedores y su relación con productos; el vendedor puede registrar y consultar clientes, pero no administrar proveedores ni editar o eliminar clientes.
+
+- Los casos de uso de terceros consumen los puertos `IProveedorRepository` e `IClienteRepository` mediante `IUnitOfWork`. El adaptador EF comparte la unidad de trabajo; `ITercerosRepository` se conserva como contrato compuesto para compatibilidad con compras.
+- `GET /api/clientes/por-documento/{documento}` busca por documento completo, conserva ceros iniciales y requiere autenticación. Devuelve `200` si existe, `404` si no existe y `400` para formatos inválidos.
+- Al registrar o editar se exige DNI de 8 o RUC de 11 dígitos ASCII. Se valida el formato, sin consulta externa a RENIEC/SUNAT. Los documentos duplicados devuelven `409`.
+- El seed `Cliente varios` (`00000000`) puede consultarse, pero no editarse ni eliminarse.
+
+Verificación específica: `dotnet test ../ImportNet.sln --configuration Release --filter FullyQualifiedName~TercerosTests` desde `ImportNet`. Cubre documentos, duplicados, seed, sustitución de productos del proveedor y autorización HTTP por rol.
 
 ## Documentación
 
