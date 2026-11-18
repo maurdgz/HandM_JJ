@@ -35,6 +35,12 @@ public sealed class ProductosController(IMediator mediator) : ControllerBase
         await mediator.Send(command with { Id = id }, ct);
         return NoContent();
     }
+    [HttpPatch("{id:int}/estado"), Authorize(Policy = "CatalogoEditar")]
+    public async Task<IActionResult> Estado(int id, CambiarEstadoProductoCommand command, CancellationToken ct)
+    {
+        await mediator.Send(command with { Id = id }, ct);
+        return NoContent();
+    }
     [HttpDelete("{id:int}"), Authorize(Policy = "CatalogoEditar")]
     public async Task<IActionResult> Eliminar(int id, CancellationToken ct)
     {
