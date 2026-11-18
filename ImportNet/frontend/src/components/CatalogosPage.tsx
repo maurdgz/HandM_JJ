@@ -16,8 +16,8 @@ const etiquetas: Record<string, string> = {
  categoriaId: "Categoría", stockMinimo: "Stock mínimo", tipo: "Tipo de proveedor", pais: "País", contacto: "Contacto",
  tipoDocumento: "Tipo de documento", numeroDocumento: "Número de documento", telefono: "Teléfono"
 };
-const titulos: Record<Modulo, [string, string]> = {
- productos: ["Productos", "producto"], categorias: ["Categorías", "categoría"], proveedores: ["Proveedores", "proveedor"], clientes: ["Clientes", "cliente"]
+const titulos: Record<Modulo, [string, string, string]> = {
+ productos: ["Productos", "producto", "Nuevo"], categorias: ["Categorías", "categoría", "Nueva"], proveedores: ["Proveedores", "proveedor", "Nuevo"], clientes: ["Clientes", "cliente", "Nuevo"]
 };
 const opciones: Record<string, [number, string][]> = { tipo: [[0, "Nacional"], [1, "Internacional"]], tipoDocumento: [[0, "DNI"], [1, "RUC"]] };
 const numeros = ["precioVenta", "categoriaId", "stockMinimo", "tipo", "tipoDocumento"];
@@ -25,18 +25,18 @@ const opcionales = ["descripcion", "telefono"];
 const selectClass = "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs";
 export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin: boolean }) {
  const [rows, setRows] = useState<Row[]>([]), [texto, setTexto] = useState("");
- const [pagina, setPagina] = useState(1), [tamano, setTamano] = useState(20), [count, setCount] = useState(0), [bajo, setBajo] = useState(false), [categoria, setCategoria] = useState("");
+ const [pagina, setPagina] = useState(1), [tamano, setTamano] = useState(20), [count, setCount] = useState(0), [bajo, setBajo] = useState(false), [categoria, setCategoria] = useState(""), [estado, setEstado] = useState("");
  const [cats, setCats] = useState<Row[]>([]), [productos, setProductos] = useState<Row[]>([]);
  const [draft, setDraft] = useState<Record<string, unknown> | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
  const fail = (e: unknown) => setError(e instanceof Error ? e.message : "Error inesperado");
- const [titulo, singular] = titulos[modulo];
+ const [titulo, singular, nuevoTexto] = titulos[modulo];
  async function load() {
   try {
-   if (modulo === "productos") { const p = await api<{items: Row[]; count: number; tamano: number}>(`/productos/buscar?texto=${encodeURIComponent(texto)}&pagina=${pagina}&stockBajo=${bajo}${categoria ? `&categoriaId=${categoria}` : ""}`); setRows(p.items); setCount(p.count); setTamano(p.tamano); }
+   if (modulo === "productos") { const p = await api<{items: Row[]; count: number; tamano: number}>(`/productos/buscar?texto=${encodeURIComponent(texto)}&pagina=${pagina}&stockBajo=${bajo}${categoria ? `&categoriaId=${categoria}` : ""}${estado ? `&activo=${estado}` : ""}`); setRows(p.items); setCount(p.count); setTamano(p.tamano); }
    else setRows(await api<Row[]>(`/${modulo}?texto=${encodeURIComponent(texto)}`));
   } catch (e) { fail(e); }
  }
- useEffect(() => { void load(); }, [modulo, texto, pagina, bajo, categoria]);
+ useEffect(() => { void load(); }, [modulo, texto, pagina, bajo, categoria, estado]);
  useEffect(() => { if (modulo === "productos") api<Row[]>("/categorias").then(setCats).catch(fail); if (modulo === "proveedores") api<Row[]>("/productos").then(setProductos).catch(fail); }, [modulo]);
  if (modulo === "proveedores" && !admin) return <p role="alert">Acceso restringido a Administrador.</p>;
  const canCreate = admin || modulo === "clientes";
@@ -56,6 +56,13 @@ export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin
    else setDraft({...row});
   } catch(e) { fail(e); }
  }
+ async function cambiarEstado(row: Row) {
+  const activar = !row.activo;
+  if (!activar && !window.confirm(`¿Desactivar "${row.nombre}"? Dejará de mostrarse a los vendedores.`)) return;
+  try { setError(""); await api(`/productos/${row.id}/estado`, {method: "PATCH", body: JSON.stringify({activo: activar})}); await load(); } catch (e) { fail(e); }
+ }
+ const nombreCategoria = (id: unknown) => cats.find(c => c.id === id)?.nombre ?? `#${id}`;
+ const pen = (v: unknown) => `S/ ${Number(v).toFixed(2)}`;
  function nuevo() {
   setError("");
   setDraft(Object.fromEntries([...campos[modulo].map(k => [k, numeros.includes(k) ? 0 : ""]), ...(modulo === "proveedores" ? [["productos", []], ["activo", true]] : [])]));
@@ -71,7 +78,7 @@ export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin
  return <section className="space-y-5">
   <div className="flex flex-wrap items-center justify-between gap-3">
    <h1 className="text-2xl font-semibold">{titulo}</h1>
-   {canCreate && <Button onClick={nuevo}>Nuevo {singular}</Button>}
+   {canCreate && <Button onClick={nuevo}>{nuevoTexto} {singular}</Button>}
   </div>
   {modulo === "productos" && <p className="text-sm text-muted-foreground">Precios de venta en PEN.</p>}
   {modulo === "clientes" && <p className="text-sm text-muted-foreground">Clientes locales: DNI (8 dígitos), RUC (11 dígitos).</p>}
@@ -80,11 +87,12 @@ export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin
   {modulo === "productos" && <div className="flex flex-wrap items-center gap-4">
    <select aria-label="Categoría" className={`${selectClass} max-w-xs`} value={categoria} onChange={e => {setCategoria(e.target.value);setPagina(1);}}><option value="">Todas las categorías</option>{cats.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>
    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={bajo} onChange={e => {setBajo(e.target.checked);setPagina(1);}} /> Solo stock bajo mínimo</label>
+   {admin && <select aria-label="Estado" className={`${selectClass} max-w-40`} value={estado} onChange={e => {setEstado(e.target.value);setPagina(1);}}><option value="">Todos los estados</option><option value="true">Activos</option><option value="false">Inactivos</option></select>}
   </div>}
   <Dialog open={draft !== null} onOpenChange={open => { if (!open) { setDraft(null); setError(""); } }}>
    <DialogContent className="max-h-[90vh] overflow-y-auto">
     <DialogHeader>
-     <DialogTitle>{draft?.id ? `Editar ${singular}` : `Nuevo ${singular}`}</DialogTitle>
+     <DialogTitle>{draft?.id ? `Editar ${singular}` : `${nuevoTexto} ${singular}`}</DialogTitle>
      <DialogDescription>{modulo === "productos" ? "El SKU debe ser único. El precio de venta se registra en soles." : "Complete los datos y guarde."}</DialogDescription>
     </DialogHeader>
     {draft && <form id="form-catalogo" onSubmit={save} className="space-y-4">
@@ -101,20 +109,46 @@ export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin
     </DialogFooter>
    </DialogContent>
   </Dialog>
-  <Table>
+  {modulo === "productos" ? <Table>
+   <TableHeader><TableRow>
+    <TableHead>SKU</TableHead><TableHead>Nombre</TableHead><TableHead>Categoría</TableHead><TableHead>Unidad</TableHead>
+    <TableHead className="text-right">Precio venta</TableHead>{admin && <TableHead className="text-right">Costo prom.</TableHead>}<TableHead className="text-right">Stock mín.</TableHead>
+    {admin && <><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead></>}
+   </TableRow></TableHeader>
+   <TableBody>
+    {rows.length === 0 && <TableRow><TableCell colSpan={admin ? 9 : 6} className="text-center text-muted-foreground">Sin resultados.</TableCell></TableRow>}
+    {rows.map(row => <TableRow key={row.id} className={row.activo ? "" : "text-muted-foreground"}>
+     <TableCell className="font-mono text-xs">{String(row.codigo)}</TableCell>
+     <TableCell className="font-medium">{row.nombre}</TableCell>
+     <TableCell>{nombreCategoria(row.categoriaId)}</TableCell>
+     <TableCell>{String(row.unidadMedida)}</TableCell>
+     <TableCell className="text-right">{pen(row.precioVenta)}</TableCell>
+     {admin && <TableCell className="text-right">{pen(row.costoPromedio)}</TableCell>}
+     <TableCell className="text-right">{String(row.stockMinimo)}</TableCell>
+     {admin && <>
+      <TableCell>{row.activo ? "Activo" : "Inactivo"}</TableCell>
+      <TableCell className="space-x-2 whitespace-nowrap text-right">
+       <Button size="sm" variant="outline" onClick={() => void edit(row)}>Editar</Button>
+       <Button size="sm" variant="outline" onClick={() => void cambiarEstado(row)}>{row.activo ? "Desactivar" : "Activar"}</Button>
+       <Button size="sm" variant="outline" onClick={async () => {if (!window.confirm(`¿Eliminar producto "${row.nombre}"? Si tiene historial, desactívelo.`)) return; try {setError(""); await api(`/productos/${row.id}`, {method: "DELETE"}); await load();} catch(e) {fail(e);}}}>Eliminar</Button>
+      </TableCell>
+     </>}
+    </TableRow>)}
+   </TableBody>
+  </Table> : <Table>
    <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Datos</TableHead>{admin && <TableHead className="text-right">Acciones</TableHead>}</TableRow></TableHeader>
    <TableBody>
     {rows.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Sin resultados.</TableCell></TableRow>}
     {rows.map(row => <TableRow key={row.id}>
      <TableCell className="font-medium">{row.nombre}</TableCell>
-     <TableCell>{modulo === "productos" ? `${row.codigo} · PEN ${row.precioVenta}` : modulo === "clientes" ? String(row.numeroDocumento) : modulo === "proveedores" ? String(row.pais) : row.id}</TableCell>
+     <TableCell>{modulo === "clientes" ? String(row.numeroDocumento) : modulo === "proveedores" ? String(row.pais) : row.id}</TableCell>
      {admin && <TableCell className="space-x-2 text-right">
       <Button size="sm" variant="outline" onClick={() => void edit(row)}>Editar</Button>
       <Button size="sm" variant="outline" onClick={async () => {if (!window.confirm(`¿Eliminar ${singular} "${row.nombre}"?`)) return; try {setError(""); await api(`/${modulo}/${row.id}`, {method: "DELETE"}); await load();} catch(e) {fail(e);}}}>Eliminar</Button>
      </TableCell>}
     </TableRow>)}
    </TableBody>
-  </Table>
+  </Table>}
   {modulo === "productos" && <div className="flex items-center gap-3"><Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(pagina-1)}>Anterior</Button><span className="text-sm">Página {pagina} de {Math.max(1, Math.ceil(count / tamano))} · {count} resultados</span><Button variant="outline" disabled={pagina*tamano >= count} onClick={() => setPagina(pagina+1)}>Siguiente</Button></div>}
  </section>;
 }
