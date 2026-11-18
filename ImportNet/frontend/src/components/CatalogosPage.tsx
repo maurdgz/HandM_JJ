@@ -11,13 +11,13 @@ const campos: Record<Modulo, string[]> = {
 const numeros = ["precioVenta", "categoriaId", "stockMinimo", "tipo", "tipoDocumento"];
 export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin: boolean }) {
  const [rows, setRows] = useState<Row[]>([]), [texto, setTexto] = useState("");
- const [pagina, setPagina] = useState(1), [count, setCount] = useState(0), [bajo, setBajo] = useState(false), [categoria, setCategoria] = useState("");
+ const [pagina, setPagina] = useState(1), [tamano, setTamano] = useState(20), [count, setCount] = useState(0), [bajo, setBajo] = useState(false), [categoria, setCategoria] = useState("");
  const [cats, setCats] = useState<Row[]>([]), [productos, setProductos] = useState<Row[]>([]);
  const [draft, setDraft] = useState<Record<string, unknown> | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
  const fail = (e: unknown) => setError(e instanceof Error ? e.message : "Error inesperado");
  async function load() {
   try {
-   if (modulo === "productos") { const p = await api<{items: Row[]; count: number}>(`/productos/buscar?texto=${encodeURIComponent(texto)}&pagina=${pagina}&stockBajo=${bajo}${categoria ? `&categoriaId=${categoria}` : ""}`); setRows(p.items); setCount(p.count); }
+   if (modulo === "productos") { const p = await api<{items: Row[]; count: number; tamano: number}>(`/productos/buscar?texto=${encodeURIComponent(texto)}&pagina=${pagina}&stockBajo=${bajo}${categoria ? `&categoriaId=${categoria}` : ""}`); setRows(p.items); setCount(p.count); setTamano(p.tamano); }
    else setRows(await api<Row[]>(`/${modulo}?texto=${encodeURIComponent(texto)}`));
   } catch (e) { fail(e); }
  }
@@ -29,7 +29,8 @@ export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin
   e.preventDefault(); if (!draft) return; setBusy(true); setError("");
   try {
    const data = {...draft}; numeros.forEach(k => { if (k in data) data[k] = Number(data[k]); });
-   if (modulo === "productos") { data.peso = null; data.partidaArancelaria = null; }
+   // Peso and partida are not editable here: keep the stored values on edit, send null on create.
+   if (modulo === "productos") { data.peso ??= null; data.partidaArancelaria ??= null; }
    await api(`/${modulo}${draft.id ? `/${draft.id}` : ""}`, {method: draft.id ? "PUT" : "POST", body: JSON.stringify(data)});
    setDraft(null); await load();
   } catch (e) { fail(e); } finally { setBusy(false); }
@@ -54,6 +55,6 @@ export default function CatalogosPage({ modulo, admin }: { modulo: Modulo; admin
    <Button disabled={busy}>Guardar</Button> <Button type="button" variant="outline" onClick={() => setDraft(null)}>Cancelar</Button>
   </form>}
   <div className="overflow-x-auto"><table className="w-full text-left"><thead><tr><th>Nombre</th><th>Datos</th><th>Acciones</th></tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-b"><td className="p-3">{row.nombre}</td><td>{modulo === "productos" ? `${row.codigo} · PEN ${row.precioVenta}` : modulo === "clientes" ? String(row.numeroDocumento) : modulo === "proveedores" ? String(row.pais) : row.id}</td><td>{admin && <><Button variant="outline" onClick={() => void edit(row)}>Editar</Button> <Button variant="outline" onClick={async () => {if (!window.confirm("¿Eliminar registro?")) return; try {await api(`/${modulo}/${row.id}`, {method: "DELETE"}); await load();} catch(e) {fail(e);}}}>Eliminar</Button></>}</td></tr>)}</tbody></table></div>
-  {modulo === "productos" && <div className="flex gap-3"><Button disabled={pagina === 1} onClick={() => setPagina(pagina-1)}>Anterior</Button><span>Página {pagina} · {count} resultados</span><Button disabled={pagina*20 >= count} onClick={() => setPagina(pagina+1)}>Siguiente</Button></div>}
+  {modulo === "productos" && <div className="flex gap-3"><Button disabled={pagina === 1} onClick={() => setPagina(pagina-1)}>Anterior</Button><span>Página {pagina} · {count} resultados</span><Button disabled={pagina*tamano >= count} onClick={() => setPagina(pagina+1)}>Siguiente</Button></div>}
  </section>;
 }
