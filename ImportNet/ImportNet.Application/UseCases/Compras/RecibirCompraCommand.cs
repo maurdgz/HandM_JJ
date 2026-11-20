@@ -80,7 +80,7 @@ internal sealed class RecibirCompraCommandHandler(
 
                     if (inventario is null)
                     {
-                        inventario = new Inventario
+                        inventario = new ImportNet.Domain.Entities.Inventario
                         {
                             ProductoId = producto.Id,
                             AlmacenId = Almacen.PrincipalId,

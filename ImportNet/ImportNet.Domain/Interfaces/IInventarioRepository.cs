@@ -10,4 +10,11 @@ public interface IInventarioRepository
         CancellationToken ct);
 
     void Agregar(Inventario inventario);
+
+    Task<Pagina<StockProducto>> Buscar(
+        string? texto,
+        bool stockBajo,
+        int pagina,
+        int tamano,
+        CancellationToken ct);
 }
