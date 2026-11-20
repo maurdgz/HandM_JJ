@@ -1,3 +1,4 @@
+using System.Data;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
@@ -64,7 +65,9 @@ internal sealed class UnitOfWork : IUnitOfWork
                 "Ya existe una transacción activa en esta unidad de trabajo.");
 
         await using var transaccion =
-            await _context.Database.BeginTransactionAsync(ct);
+            await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                ct);
 
         try
         {
@@ -75,26 +78,32 @@ internal sealed class UnitOfWork : IUnitOfWork
 
             return resultado;
         }
-        catch (Exception falloOriginal)
+        catch (Exception error)
         {
-            try
+            _context.ChangeTracker.Clear();
+
+            if (EsConflictoDeConcurrencia(error))
             {
-                await transaccion.RollbackAsync(
-                    CancellationToken.None);
-            }
-            catch (Exception falloRollback)
-            {
-                throw new AggregateException(
-                    "Falló la operación y también su reversión.",
-                    falloOriginal,
-                    falloRollback);
-            }
-            finally
-            {
-                _context.ChangeTracker.Clear();
+                throw new ConflictoException(
+                    "Otra operación modificó los mismos datos. Recargue y vuelva a intentarlo.");
             }
 
             throw;
         }
+    }
+
+    private static bool EsConflictoDeConcurrencia(
+        Exception error)
+    {
+        if (error is DbUpdateConcurrencyException)
+            return true;
+
+        if (error is PostgresException postgres
+            && postgres.SqlState is
+                "40001" or "40P01" or "23505" or "23503")
+            return true;
+
+        return error.InnerException is { } interna
+            && EsConflictoDeConcurrencia(interna);
     }
 }

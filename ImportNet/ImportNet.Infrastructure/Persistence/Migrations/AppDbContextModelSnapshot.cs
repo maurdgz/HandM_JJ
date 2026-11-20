@@ -398,6 +398,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ProveedorId");
 
+                    b.HasIndex("CompraId", "ProductoId", "AlmacenId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Movimiento_EntradaCompraProductoAlmacen")
+                        .HasFilter("\"CompraId\" IS NOT NULL AND \"Tipo\" = 0");
+
                     b.HasIndex("VentaId", "ProductoId", "AlmacenId", "Tipo")
                         .IsUnique();
 

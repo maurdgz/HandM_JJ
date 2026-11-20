@@ -16,6 +16,19 @@ internal sealed class MovimientoCompraConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         entity.HasIndex(x => x.CompraId)
-            .HasDatabaseName("IX_MovimientoInventario_CompraId");
+            .HasDatabaseName(
+                "IX_MovimientoInventario_CompraId");
+
+        entity.HasIndex(x => new
+            {
+                x.CompraId,
+                x.ProductoId,
+                x.AlmacenId
+            })
+            .IsUnique()
+            .HasDatabaseName(
+                "UX_Movimiento_EntradaCompraProductoAlmacen")
+            .HasFilter(
+                "\"CompraId\" IS NOT NULL AND \"Tipo\" = 0");
     }
 }
