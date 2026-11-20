@@ -12,9 +12,9 @@ Rama: `feat/dia-11-punto-de-venta`. Base verificada: `0baef9cc2592c7e46a1478ccff
 
 Reglas de dominio PEN, contrato/handler MediatR, adaptador `RegistroVenta` y endpoint `POST /api/ventas` implementados en esta continuación. La operación agrupa productos repetidos, valida actividad/cliente/cantidad/descuento/stock, toma precio del catálogo, modifica inventario con xmin de EF/Npgsql y guarda venta, detalle y salidas dentro de una transacción. El acceso está protegido por la política `Ventas` y resuelve empleado activo desde JWT. El descuento está limitado provisionalmente a 50% por línea agregada y aún requiere configuración.
 
-Verificación actual: `dotnet build ImportNet.sln --configuration Release` pasó con 0 warnings y errores. `dotnet test ... --filter FullyQualifiedName~SmokeTests`: 3 pasaron, 1 omitida. La corrida general anterior reportó 49 pasaron, 5 omitidas y 15 fallidas, principalmente por falta de registro del adaptador, ya corregida; también falló `ComprasApiTests.Api_ValidacionesNoDejanComprasParciales`, pendiente de repetir/investigar. PostgreSQL, pruebas transaccionales POS, UI Astro y CI aún no verificados.
+Verificación actual: `dotnet build ImportNet.sln --configuration Release` pasó (0 warnings, 0 errores). La suite completa pasó: 64 aprobadas, 5 omitidas, 0 fallidas. `VentasDominioTests`: 5 aprobadas. Smoke tests: 3 aprobadas, 1 omitida. Astro check y build pasaron (10 hints preexistentes). PostgreSQL POS y prueba real desde navegador todavía no están verificadas. El test POS actual cubre dominio; aún faltan pruebas transaccionales para stock, rollback y carreras.
 
-La rama del compañero `origin/feat/2026-11-20-recepcion-inventario` contiene 12 commits desde `main` (SHA final `843fdef`) y no es ancestro de `origin/main`; no se integró. El flujo POS usa el modelo `Inventario` existente en main para evitar importar su rama completa. Todavía faltan UI Astro y pruebas POS/PostgreSQL.
+La rama del compañero `origin/feat/2026-11-20-recepcion-inventario` contiene 12 commits desde `main` (SHA final `843fdef`) y no es ancestro de `origin/main`; no se integró. El POS usa el modelo `Inventario` disponible en main. UI Astro implementada; falta la prueba funcional de registro y pruebas PostgreSQL de concurrencia/rollback.
 
 ## Continuación
 
