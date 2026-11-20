@@ -11,7 +11,7 @@ Actualizado: 15/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10�
 | 05 | 13/11 | Huber Lope | Catálogo con búsqueda y paginación | Recuperado sobre el CRUD existente |
 | 06 | 14/11 | José Carlos Vitorino | Proveedores y clientes | Recuperado sobre entidades y mapeos existentes |
 | 07 | 15/11 | Mauricio Rodríguez | Compras de importación (borrador) y costo puesto en tienda | Implementado y probado; recepción fuera de alcance |
-| 08 | 16/11 | José Luis Tincopa | Recepción de compra e inventario | Pendiente |
+| 08 | 16/11 | José Luis Tincopa Paz | Recepción de compra e inventario | Implementado y probado en rama local el 20/11; pendiente de publicar e integrar |
 | 09 | 17/11 | Huber Lope | Ajustes de inventario y kardex | Pendiente |
 | 10 | 18/11 | José Carlos Vitorino | QA intermedio: compras, inventario y roles | Pendiente |
 | 11 | 19/11 | Mauricio Rodríguez | Punto de venta (POS) | Pendiente |
@@ -29,3 +29,25 @@ Actualizado: 15/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10�
 - Compra tiene costo USD por línea y tipo de cambio propio; los campos históricos de Producto se conservan por compatibilidad.
 - La concurrencia usa `xmin` en lugar de una columna de versión.
 - Días 04–06 recuperados en la rama del Día 07, separados de los commits propios de Compras.
+
+
+## Entrega de recepción e inventario
+
+Responsable: José Luis Tincopa Paz.
+
+Rama: `feat/2026-11-20-recepcion-inventario`.
+
+Incluye recepción transaccional de compras, actualización del costo promedio
+ponderado, entradas vinculadas a compras, protección contra duplicados y
+concurrencia, consulta de stock y pantallas de recepción y alertas.
+
+Última suite ordinaria comunicada: 108 pruebas, 102 correctas,
+0 fallidas y 6 omitidas. Durante la implementación también pasaron
+las dos pruebas habilitadas de concurrencia PostgreSQL.
+
+Detalle de uso, migraciones, permisos y comprobación manual:
+[Día 08: recepción e inventario](DIA-08-RECEPCION-INVENTARIO.md).
+
+Esta entrega corresponde al Día 08. No cierra los trabajos de historial,
+nota de venta y anulación del Día 12, ni los de seguridad y publicación
+del frontend del Día 16.

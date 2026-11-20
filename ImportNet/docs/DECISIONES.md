@@ -6,7 +6,7 @@
 - API REST pura; Swagger solo en Development.
 - Capas: API → Application + Infrastructure; Infrastructure → Application + Domain; Application → Domain. Domain sin dependencias externas.
 - Casos de uso con MediatR (`record` + `Handler` interno). Los controladores no consultan EF.
-- Repositorio y UnitOfWork solo para Categoría y Producto; empleados usan un puerto específico (`IEmpleadoRepository`).
+- Repositorios y UnitOfWork para catálogo, terceros, compras e inventario; empleados usan un puerto específico (`IEmpleadoRepository`). Las consultas EF permanecen en Infrastructure.
 
 ## Autenticación y permisos
 
@@ -31,3 +31,33 @@
 - Las migraciones bloquean cambios que perderían datos o requerirían conversión implícita.
 - Los scripts SQL no se versionan: se generan con `dotnet ef migrations script --idempotent`.
 - Pruebas ordinarias con SQLite en memoria; las de PostgreSQL se activan de forma explícita y revierten sus datos.
+
+
+## Recepción e inventario: Día 08
+
+- La recepción exige Administrador y empleado activo. El autor se obtiene
+  de la sesión, sin aceptar un EmpleadoId enviado por el cliente.
+- La compra cambia de Borrador a Recibida dentro de la misma transacción
+  que registra entradas, cantidades y costos promedio.
+- Todos los repositorios de la recepción comparten un AppDbContext.
+  La transacción utiliza aislamiento Serializable.
+- Cada línea genera una Entrada en Almacen.PrincipalId, vinculada
+  a CompraId, ProveedorId y EmpleadoId.
+- Se conserva el control de concurrencia de PostgreSQL mediante xmin.
+  Los conflictos se devuelven como 409; no se reintenta automáticamente.
+- Un índice único filtrado protege CompraId, ProductoId y AlmacenId
+  para movimientos de tipo Entrada con CompraId no nulo.
+- El costo promedio ponderado utiliza el TotalPen persistido de la línea
+  y se redondea a cuatro decimales con AwayFromZero. No se reconstruye
+  a partir de unitarios redondeados para presentación.
+- La recepción no cambia PrecioVenta ni las referencias históricas
+  CostoImportacionUsd y TipoCambioImportacion del producto.
+- Una compra recibida no permite nueva recepción, edición ni eliminación.
+- Administrador y Vendedor consultan stock mediante la política CatalogoLeer.
+  La política Inventario conserva su alcance de Administrador.
+- La respuesta de stock omite costos y tipos de cambio para ambos roles.
+- La consulta incluye productos sin inventario con cantidad cero y conserva
+  productos inactivos con su indicador de estado.
+- Stock bajo significa Cantidad menor o igual a StockMinimo.
+- Las pruebas ordinarias de integración usan SQLite temporal. La concurrencia
+  real se comprueba mediante pruebas PostgreSQL explícitamente habilitadas.
