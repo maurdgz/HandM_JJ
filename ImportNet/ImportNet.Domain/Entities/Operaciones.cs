@@ -11,12 +11,15 @@ public sealed class Empleado
     public string Area { get; set; } = "";
     public bool Activo { get; set; } = true;
 }
+
 public sealed class Almacen
 {
     public const int PrincipalId = 1;
+
     public int Id { get; set; }
     public string Nombre { get; set; } = "";
 }
+
 public sealed class Inventario
 {
     public int Id { get; set; }
@@ -25,7 +28,9 @@ public sealed class Inventario
     public decimal Cantidad { get; set; }
     public uint Version { get; set; }
 }
+
 public enum TipoMovimiento { Entrada, Salida, Ajuste }
+
 public sealed class MovimientoInventario
 {
     public int Id { get; set; }
@@ -36,12 +41,16 @@ public sealed class MovimientoInventario
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
     public int EmpleadoId { get; set; }
     public int? ProveedorId { get; set; }
+    public int? CompraId { get; set; }
     public int? VentaId { get; set; }
 }
+
 public enum TipoProveedor { Nacional, Internacional }
+
 public sealed class Proveedor
 {
     public List<ProveedorProducto> Suministros { get; set; } = [];
+
     public int Id { get; set; }
     public string Nombre { get; set; } = "";
     public TipoProveedor Tipo { get; set; }
@@ -49,12 +58,15 @@ public sealed class Proveedor
     public string Contacto { get; set; } = "";
     public bool Activo { get; set; } = true;
 }
+
 public sealed class ProveedorProducto
 {
     public int ProveedorId { get; set; }
     public int ProductoId { get; set; }
 }
+
 public enum TipoDocumento { Dni, Ruc }
+
 public sealed class Cliente
 {
     public int Id { get; set; }
@@ -63,7 +75,9 @@ public sealed class Cliente
     public string Nombre { get; set; } = "";
     public string? Telefono { get; set; }
 }
+
 public enum EstadoVenta { Registrada, Anulada }
+
 public sealed class Venta
 {
     public int Id { get; set; }
@@ -81,12 +95,20 @@ public sealed class Venta
 
     public void Anular(string motivo)
     {
-        if (Estado == EstadoVenta.Anulada) throw new ReglaNegocioException("La venta ya está anulada.");
-        MotivoAnulacion = Reglas.Texto(motivo, 300, "Motivo de anulación");
+        if (Estado == EstadoVenta.Anulada)
+            throw new ReglaNegocioException(
+                "La venta ya está anulada.");
+
+        MotivoAnulacion = Reglas.Texto(
+            motivo,
+            300,
+            "Motivo de anulación");
+
         FechaAnulacion = DateTime.UtcNow;
         Estado = EstadoVenta.Anulada;
     }
 }
+
 public sealed class DetalleVenta
 {
     public int Id { get; set; }
