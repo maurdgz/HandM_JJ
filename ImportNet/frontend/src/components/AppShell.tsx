@@ -10,8 +10,17 @@ import { Toaster } from "@/components/ui/sonner";
 import ComprasPage from "@/components/ComprasPage";
 import CatalogosPage from "@/components/CatalogosPage";
 import EmpleadosPage from "@/components/EmpleadosPage";
+import StockPage from "@/components/StockPage";
 
-export type AppView = "compras" | "inicio" | "empleados" | "productos" | "categorias" | "proveedores" | "clientes";
+export type AppView =
+  | "compras"
+  | "inicio"
+  | "empleados"
+  | "productos"
+  | "categorias"
+  | "proveedores"
+  | "clientes"
+  | "stock";
 
 interface Props {
   view: AppView;
@@ -55,7 +64,11 @@ export default function AppShell({ view }: Props) {
     return (
       <main className="p-8">
         <p role="alert">{error}</p>
-        <Button className="mt-4" onClick={() => window.location.reload()}>
+
+        <Button
+          className="mt-4"
+          onClick={() => window.location.reload()}
+        >
           Reintentar
         </Button>
       </main>
@@ -63,10 +76,16 @@ export default function AppShell({ view }: Props) {
   }
 
   if (!user) {
-    return <p className="p-8" role="status">Comprobando sesión…</p>;
+    return (
+      <p className="p-8" role="status">
+        Comprobando sesión.
+      </p>
+    );
   }
 
   const isAdmin = user.roles.includes("Administrador");
+  const puedeLeerStock =
+    isAdmin || user.roles.includes("Vendedor");
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
@@ -75,17 +94,34 @@ export default function AppShell({ view }: Props) {
           ImportNet
         </a>
 
-        <nav aria-label="Principal" className="mt-8 flex gap-4 md:flex-col">
+        <nav
+          aria-label="Principal"
+          className="mt-8 flex flex-wrap gap-4 md:flex-col"
+        >
           <a href="/" className="rounded px-2 py-2 hover:bg-slate-200">
             Inicio
           </a>
 
-          <a href="/productos">Productos</a><a href="/categorias">Categorías</a><a href="/clientes">Clientes</a>
-          {isAdmin && <><a href="/proveedores">Proveedores</a><a href="/compras">Compras de importación</a></>}
+          <a href="/productos">Productos</a>
+          <a href="/categorias">Categorías</a>
+          <a href="/clientes">Clientes</a>
+
+          {puedeLeerStock && (
+            <a href="/stock">Stock y alertas</a>
+          )}
+
           {isAdmin && (
-            <a href="/empleados" className="rounded px-2 py-2 hover:bg-slate-200">
-              Empleados
-            </a>
+            <>
+              <a href="/proveedores">Proveedores</a>
+              <a href="/compras">Compras de importación</a>
+
+              <a
+                href="/empleados"
+                className="rounded px-2 py-2 hover:bg-slate-200"
+              >
+                Empleados
+              </a>
+            </>
           )}
         </nav>
 
@@ -93,10 +129,16 @@ export default function AppShell({ view }: Props) {
           <p className="text-sm font-medium">
             {user.nombre} {user.apellidos}
           </p>
+
           <p className="mt-1 text-sm text-slate-600">
             {user.roles.join(", ")}
           </p>
-          <Button variant="outline" className="mt-4" onClick={logout}>
+
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={logout}
+          >
             Cerrar sesión
           </Button>
         </div>
@@ -108,15 +150,43 @@ export default function AppShell({ view }: Props) {
             <h1 className="text-2xl font-semibold">
               Bienvenido, {user.nombre}
             </h1>
+
             <p className="mt-3 text-slate-600">
               Selecciona una opción del menú.
             </p>
           </>
         )}
 
-        {view === "compras" && (isAdmin ? <ComprasPage /> : <p role="alert">Acceso restringido a Administrador.</p>)}
-        {view === "empleados" && (isAdmin ? <EmpleadosPage /> : <p role="alert">Acceso restringido.</p>)}
-        {(view === "productos" || view === "categorias" || view === "proveedores" || view === "clientes") && <CatalogosPage modulo={view} admin={isAdmin} />}
+        {view === "compras" && (
+          isAdmin
+            ? <ComprasPage />
+            : (
+              <p role="alert">
+                Acceso restringido a Administrador.
+              </p>
+            )
+        )}
+
+        {view === "empleados" && (
+          isAdmin
+            ? <EmpleadosPage />
+            : <p role="alert">Acceso restringido.</p>
+        )}
+
+        {view === "stock" && (
+          puedeLeerStock
+            ? <StockPage />
+            : <p role="alert">No tienes permiso para consultar stock.</p>
+        )}
+
+        {(
+          view === "productos" ||
+          view === "categorias" ||
+          view === "proveedores" ||
+          view === "clientes"
+        ) && (
+          <CatalogosPage modulo={view} admin={isAdmin} />
+        )}
       </main>
 
       <Toaster />
