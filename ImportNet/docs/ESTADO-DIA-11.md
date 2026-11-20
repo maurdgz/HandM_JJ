@@ -14,8 +14,8 @@ Reglas de dominio PEN, contrato/handler MediatR, adaptador `RegistroVenta` y end
 
 Verificación actual: `dotnet build ImportNet.sln --configuration Release` pasó (0 warnings, 0 errores). La suite completa pasó: 64 aprobadas, 5 omitidas, 0 fallidas. `VentasDominioTests`: 5 aprobadas. Smoke tests: 3 aprobadas, 1 omitida. Astro check y build pasaron (10 hints preexistentes). PostgreSQL POS y prueba real desde navegador todavía no están verificadas. El test POS actual cubre dominio; aún faltan pruebas transaccionales para stock, rollback y carreras.
 
-La rama del compañero `origin/feat/2026-11-20-recepcion-inventario` contiene 12 commits desde `main` (SHA final `843fdef`) y no es ancestro de `origin/main`; no se integró. El POS usa el modelo `Inventario` disponible en main. UI Astro implementada; falta la prueba funcional de registro y pruebas PostgreSQL de concurrencia/rollback.
+La rama del compañero `origin/feat/2026-11-20-recepcion-inventario` contiene 12 commits desde `main` (SHA final `843fdef`) y no es ancestro de `origin/main`; no se integró. El POS usa el modelo `Inventario` disponible en main. Se publicaron tres commits propios: `e1088e0`, `13033ca`, `d8aa31c` (HEAD publicado al redactar este informe). PR todavía no abierto porque faltan verificaciones PostgreSQL POS y recorrido navegador.
 
 ## Continuación
 
-Completar repositorios/caso de uso de venta con reserva de stock concurrente y transacción PostgreSQL; agregar API y pruebas PostgreSQL; luego isla Astro y su verificación. Mantener ventas y cobros exclusivamente en PEN. No implementar historial, impresión ni anulación.
+Próximo paso exacto: agregar pruebas API de venta, incluida carrera por última unidad y rollback de venta multlínea con PostgreSQL descartable; verificar errores de stock y precios manipulados; luego validar registro en Astro, revisar CI remoto y abrir PR. Completar diseño/resolución del cliente con documento en pantalla (ahora es entrada numérica de ID) y configurar el tope de descuento. Mantener ventas/cobros en PEN; no implementar historial, impresión ni anulación.
