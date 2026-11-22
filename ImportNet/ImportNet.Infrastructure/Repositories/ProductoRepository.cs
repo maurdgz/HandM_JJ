@@ -20,10 +20,11 @@ internal sealed class ProductoRepository : GenericRepository<Producto>, IProduct
             .ToListAsync(ct);
     }
 
-    public async Task<Pagina<Producto>> Buscar(string? texto, int? categoriaId, bool stockBajo, int pagina, int tamano, CancellationToken ct)
+    public async Task<Pagina<Producto>> Buscar(string? texto, int? categoriaId, bool stockBajo, int pagina, int tamano, bool? activo, CancellationToken ct)
     {
         var q = _dbSet.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(texto)) { var t = texto.Trim().ToLower(); q = q.Where(p => p.Nombre.ToLower().Contains(t) || p.Codigo.ToLower().Contains(t)); }
+        if (activo.HasValue) q = q.Where(p => p.Activo == activo);
         if (categoriaId.HasValue) q = q.Where(p => p.CategoriaId == categoriaId);
         if (stockBajo) q = q.Where(p => (_context.Set<Inventario>().Where(i => i.ProductoId == p.Id).Sum(i => (decimal?)i.Cantidad) ?? 0) <= p.StockMinimo);
         var count = await q.CountAsync(ct);
