@@ -28,6 +28,7 @@ export default function EmpleadosPage() {
   const [error, setError] = useState<Error | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [savePending, setSavePending] = useState(false);
   const [editing, setEditing] = useState<EmpleadoDto | null>(null);
 
   const [deleting, setDeleting] = useState<EmpleadoDto | null>(null);
@@ -173,7 +174,12 @@ export default function EmpleadosPage() {
         </div>
       )}
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Dialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          if (!savePending) setFormOpen(open);
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
@@ -187,6 +193,7 @@ export default function EmpleadosPage() {
           <EmpleadoForm
             key={editing?.id ?? "nuevo"}
             empleado={editing}
+            onPendingChange={setSavePending}
             onCancel={() => setFormOpen(false)}
             onSaved={async () => {
               setFormOpen(false);

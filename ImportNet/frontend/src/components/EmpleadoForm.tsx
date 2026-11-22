@@ -21,6 +21,7 @@ interface Props {
   empleado: EmpleadoDto | null;
   onSaved: () => Promise<void>;
   onCancel: () => void;
+  onPendingChange: (pending: boolean) => void;
 }
 
 const fields = [
@@ -39,6 +40,7 @@ export default function EmpleadoForm({
   empleado,
   onSaved,
   onCancel,
+  onPendingChange,
 }: Props) {
   const [error, setError] = useState("");
 
@@ -108,6 +110,7 @@ export default function EmpleadoForm({
 
   async function submit(values: Values) {
     setError("");
+    onPendingChange(true);
 
     try {
       if (empleado) {
@@ -131,6 +134,8 @@ export default function EmpleadoForm({
       setError(
         error instanceof Error ? error.message : "No se pudo guardar.",
       );
+    } finally {
+      onPendingChange(false);
     }
   }
 
