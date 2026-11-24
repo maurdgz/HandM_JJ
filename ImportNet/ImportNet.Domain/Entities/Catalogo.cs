@@ -81,6 +81,9 @@ public sealed class Producto : CatalogEntity
         TipoCambioImportacion = tipoCambio;
     }
 
+    // Products with history are never deleted; they are deactivated so past records keep their reference.
+    public void CambiarEstado(bool activo) => Activo = activo;
+
     public void ActualizarCostoPromedioPorRecepcion(
         decimal stockActual,
         decimal cantidadEntrada,
