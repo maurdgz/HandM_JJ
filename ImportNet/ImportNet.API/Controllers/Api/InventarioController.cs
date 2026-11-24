@@ -42,4 +42,61 @@ public sealed class InventarioController(
 
         return Ok(resultado);
     }
+
+    [HttpPost("ajustes")]
+    [Authorize(Policy = "Inventario")]
+    [ProducesResponseType(
+        typeof(AjusteRegistradoDto),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> RegistrarAjuste(
+        RegistrarAjusteCommand command,
+        CancellationToken ct)
+    {
+        var ajuste = await mediator.Send(command, ct);
+
+        return Created(
+            $"/api/inventario/kardex/{ajuste.ProductoId}",
+            ajuste);
+    }
+
+    [HttpGet("kardex/{productoId:int}")]
+    [Authorize(Policy = "Inventario")]
+    [ProducesResponseType(
+        typeof(KardexProducto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ConsultarKardex(
+        int productoId,
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        CancellationToken ct = default)
+    {
+        var kardex = await mediator.Send(
+            new ConsultarKardexQuery(productoId, desde, hasta),
+            ct);
+
+        return Ok(kardex);
+    }
 }

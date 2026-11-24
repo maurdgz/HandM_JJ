@@ -28,7 +28,11 @@ const formatoCantidad = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 3,
 });
 
-export default function StockPage() {
+interface Props {
+  admin?: boolean;
+}
+
+export default function StockPage({ admin = false }: Props) {
   const [texto, setTexto] = useState("");
   const [stockBajo, setStockBajo] = useState(false);
   const [tamano, setTamano] = useState(20);
@@ -283,6 +287,11 @@ export default function StockPage() {
                   <th scope="col" className="px-3 py-3">
                     Producto activo
                   </th>
+                  {admin && (
+                    <th scope="col" className="px-3 py-3">
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  )}
                 </tr>
               </thead>
 
@@ -327,12 +336,23 @@ export default function StockPage() {
                     <td className="px-3 py-3">
                       {producto.activo ? "Sí" : "No"}
                     </td>
+
+                    {admin && (
+                      <td className="px-3 py-3">
+                        <a
+                          className="text-blue-700 underline"
+                          href={`/kardex?producto=${producto.productoId}`}
+                        >
+                          Kardex
+                        </a>
+                      </td>
+                    )}
                   </tr>
                 ))}
 
                 {resultado.items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center">
+                    <td colSpan={admin ? 8 : 7} className="px-3 py-6 text-center">
                       No se encontraron productos con estos filtros.
                     </td>
                   </tr>

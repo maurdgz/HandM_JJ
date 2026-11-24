@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ImportNet.Application.Security;
 using ImportNet.Application.UseCases.Empleados;
+using ImportNet.Application.UseCases.Ventas;
 
 namespace ImportNet.Infrastructure;
 
@@ -20,6 +21,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IEmpleadoRepository, EmpleadoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IRegistroVenta, RegistroVenta>();
         services.AddSingleton<ImportNet.Application.Security.IPasswordHasher, BcryptPasswordHasher>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUsuarioActual, UsuarioActual>();

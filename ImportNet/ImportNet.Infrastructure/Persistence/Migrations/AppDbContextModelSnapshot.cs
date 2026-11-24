@@ -371,6 +371,13 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("MotivoAjuste")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<int>("ProductoId")
                         .HasColumnType("integer");
 
@@ -394,9 +401,10 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Fecha");
 
-                    b.HasIndex("ProductoId");
-
                     b.HasIndex("ProveedorId");
+
+                    b.HasIndex("ProductoId", "Fecha")
+                        .HasDatabaseName("IX_Movimiento_ProductoFecha");
 
                     b.HasIndex("CompraId", "ProductoId", "AlmacenId")
                         .IsUnique()
@@ -409,6 +417,8 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.ToTable("MovimientoInventario", null, t =>
                         {
                             t.HasCheckConstraint("CK_Movimiento_Cantidad", "(\"Tipo\" IN (0, 1) AND \"Cantidad\" > 0) OR (\"Tipo\" = 2 AND \"Cantidad\" <> 0)");
+
+                            t.HasCheckConstraint("CK_Movimiento_MotivoAjuste", "(\"Tipo\" = 2 AND \"MotivoAjuste\" IN (0, 1, 2, 3)) OR (\"Tipo\" <> 2 AND \"MotivoAjuste\" IS NULL)");
                         });
                 });
 

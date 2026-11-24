@@ -10,9 +10,12 @@ import { Toaster } from "@/components/ui/sonner";
 import ComprasPage from "@/components/ComprasPage";
 import CatalogosPage from "@/components/CatalogosPage";
 import EmpleadosPage from "@/components/EmpleadosPage";
+import PuntoVentaPage from "@/components/PuntoVentaPage";
+import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
 
 export type AppView =
+  | "ventas"
   | "compras"
   | "inicio"
   | "empleados"
@@ -20,7 +23,8 @@ export type AppView =
   | "categorias"
   | "proveedores"
   | "clientes"
-  | "stock";
+  | "stock"
+  | "kardex";
 
 interface Props {
   view: AppView;
@@ -105,6 +109,7 @@ export default function AppShell({ view }: Props) {
           <a href="/productos">Productos</a>
           <a href="/categorias">Categorías</a>
           <a href="/clientes">Clientes</a>
+          <a href="/ventas">Punto de venta</a>
 
           {puedeLeerStock && (
             <a href="/stock">Stock y alertas</a>
@@ -114,6 +119,7 @@ export default function AppShell({ view }: Props) {
             <>
               <a href="/proveedores">Proveedores</a>
               <a href="/compras">Compras de importación</a>
+              <a href="/kardex">Kardex y ajustes</a>
 
               <a
                 href="/empleados"
@@ -167,6 +173,8 @@ export default function AppShell({ view }: Props) {
             )
         )}
 
+        {view === "ventas" && <PuntoVentaPage />}
+
         {view === "empleados" && (
           isAdmin
             ? <EmpleadosPage />
@@ -175,8 +183,14 @@ export default function AppShell({ view }: Props) {
 
         {view === "stock" && (
           puedeLeerStock
-            ? <StockPage />
+            ? <StockPage admin={isAdmin} />
             : <p role="alert">No tienes permiso para consultar stock.</p>
+        )}
+
+        {view === "kardex" && (
+          isAdmin
+            ? <KardexPage />
+            : <p role="alert">Acceso restringido a Administrador.</p>
         )}
 
         {(

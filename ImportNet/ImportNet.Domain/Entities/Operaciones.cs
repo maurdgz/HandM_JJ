@@ -43,6 +43,14 @@ public sealed class MovimientoInventario
     public int? ProveedorId { get; set; }
     public int? CompraId { get; set; }
     public int? VentaId { get; set; }
+    public MotivoAjuste? MotivoAjuste { get; set; }
+    public string? Observacion { get; set; }
+
+    // Entrada suma, Salida resta y Ajuste ya trae su signo.
+    public decimal CantidadConSigno => ConSigno(Tipo, Cantidad);
+
+    public static decimal ConSigno(TipoMovimiento tipo, decimal cantidad)
+        => tipo == TipoMovimiento.Salida ? -cantidad : cantidad;
 }
 
 public enum TipoProveedor { Nacional, Internacional }
@@ -93,6 +101,18 @@ public sealed class Venta
     public DateTime? FechaAnulacion { get; private set; }
     public uint Version { get; set; }
 
+    public Venta(int numero, int empleadoId, int clienteId, decimal subtotal, decimal descuento, DateTime fecha)
+    {
+        if (numero <= 0 || empleadoId <= 0 || clienteId <= 0 || subtotal < 0 || descuento < 0 || descuento > subtotal)
+            throw new ReglaNegocioException("Los datos e importes de venta no son válidos.");
+        Numero = numero; EmpleadoId = empleadoId; ClienteId = clienteId;
+        Subtotal = decimal.Round(subtotal, 2, MidpointRounding.AwayFromZero);
+        Descuento = decimal.Round(descuento, 2, MidpointRounding.AwayFromZero);
+        Total = Subtotal - Descuento; Fecha = fecha;
+    }
+
+    public Venta() { }
+
     public void Anular(string motivo)
     {
         if (Estado == EstadoVenta.Anulada)
@@ -118,4 +138,18 @@ public sealed class DetalleVenta
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
     public decimal Subtotal { get; set; }
+
+    public DetalleVenta(int productoId, decimal cantidad, decimal precioUnitario, decimal descuento)
+    {
+        if (productoId <= 0 || cantidad <= 0 || cantidad > 1000000 || decimal.Round(cantidad, 3) != cantidad
+            || precioUnitario < 0 || decimal.Round(precioUnitario, 2) != precioUnitario
+            || descuento < 0 || descuento > precioUnitario * cantidad * 0.5m
+            || decimal.Round(descuento, 2) != descuento)
+            throw new ReglaNegocioException("Cantidad, precio o descuento de línea inválidos (descuento máximo 50%).");
+        ProductoId = productoId; Cantidad = cantidad; PrecioUnitario = precioUnitario;
+        Descuento = descuento;
+        Subtotal = decimal.Round(cantidad * precioUnitario, 2, MidpointRounding.AwayFromZero) - descuento;
+    }
+
+    private DetalleVenta() { }
 }
