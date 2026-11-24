@@ -15,6 +15,7 @@ import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
 import HistorialVentasPage from "@/components/HistorialVentasPage";
 import NotaVentaPage from "@/components/NotaVentaPage";
+import ReportesPage from "@/components/ReportesPage";
 import VendedorDashboard from "@/components/dashboard/VendedorDashboard";
 import { DashboardLoading } from "@/components/dashboard/DashboardStates";
 
@@ -32,7 +33,8 @@ export type AppView =
   | "proveedores"
   | "clientes"
   | "stock"
-  | "kardex";
+  | "kardex"
+  | "reportes";
 
 interface Props {
   view: AppView;
@@ -129,6 +131,7 @@ export default function AppShell({ view }: Props) {
               <a href="/proveedores">Proveedores</a>
               <a href="/compras">Compras de importación</a>
               <a href="/kardex">Kardex y ajustes</a>
+              <a href="/reportes" aria-current={view === "reportes" ? "page" : undefined}>Reportes</a>
 
               <a
                 href="/empleados"
@@ -172,6 +175,10 @@ export default function AppShell({ view }: Props) {
                 Acceso restringido a Administrador.
               </p>
             )
+        )}
+
+        {view === "reportes" && (
+          isAdmin ? <ReportesPage /> : <p role="alert">Acceso restringido a Administrador.</p>
         )}
 
         {view === "ventas" && <PuntoVentaPage />}

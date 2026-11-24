@@ -47,14 +47,11 @@ function errorMessage(data: unknown, status: number): string {
   return "No se pudo completar la solicitud.";
 }
 
-export async function api<T>(
-  path: string,
-  options: ApiOptions = {},
-): Promise<T> {
+async function solicitar(path: string, options: ApiOptions, accept: string): Promise<Response> {
   const { auth = true, ...request } = options;
   const headers = new Headers(request.headers);
 
-  headers.set("Accept", "application/json");
+  headers.set("Accept", accept);
 
   if (request.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -77,27 +74,35 @@ export async function api<T>(
     cache: "no-store",
   });
 
+  if (response.ok) return response;
+
+  if (response.status === 401 && auth) {
+    redirectToLogin();
+  }
+
+  throw new ApiError(response.status, errorMessage(await leerJson(response), response.status));
+}
+
+async function leerJson(response: Response): Promise<unknown> {
   const text = await response.text();
-  let data: unknown;
-
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = undefined;
-    }
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
   }
+}
 
-  if (!response.ok) {
-    if (response.status === 401 && auth) {
-      redirectToLogin();
-    }
+export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const response = await solicitar(path, options, "application/json");
+  return await leerJson(response) as T;
+}
 
-    throw new ApiError(
-      response.status,
-      errorMessage(data, response.status),
-    );
+export async function apiExcel(path: string): Promise<Blob> {
+  const tipo = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const response = await solicitar(path, {}, tipo);
+  if (response.headers.get("Content-Type")?.split(";")[0] !== tipo) {
+    throw new ApiError(response.status, "La API no devolvió un archivo Excel.");
   }
-
-  return data as T;
+  return response.blob();
 }
