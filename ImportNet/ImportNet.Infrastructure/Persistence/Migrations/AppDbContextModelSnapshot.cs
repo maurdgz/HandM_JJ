@@ -362,6 +362,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
 
+                    b.Property<int?>("CompraId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("EmpleadoId")
                         .HasColumnType("integer");
 
@@ -384,6 +387,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AlmacenId");
 
+                    b.HasIndex("CompraId")
+                        .HasDatabaseName("IX_MovimientoInventario_CompraId");
+
                     b.HasIndex("EmpleadoId");
 
                     b.HasIndex("Fecha");
@@ -391,6 +397,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProductoId");
 
                     b.HasIndex("ProveedorId");
+
+                    b.HasIndex("CompraId", "ProductoId", "AlmacenId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Movimiento_EntradaCompraProductoAlmacen")
+                        .HasFilter("\"CompraId\" IS NOT NULL AND \"Tipo\" = 0");
 
                     b.HasIndex("VentaId", "ProductoId", "AlmacenId", "Tipo")
                         .IsUnique();
@@ -894,6 +905,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AlmacenId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("ImportNet.Domain.Entities.Compra", null)
+                        .WithMany()
+                        .HasForeignKey("CompraId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ImportNet.Domain.Entities.Empleado", null)
                         .WithMany()
