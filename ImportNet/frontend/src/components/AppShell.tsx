@@ -11,6 +11,7 @@ import ComprasPage from "@/components/ComprasPage";
 import CatalogosPage from "@/components/CatalogosPage";
 import EmpleadosPage from "@/components/EmpleadosPage";
 import PuntoVentaPage from "@/components/PuntoVentaPage";
+import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
 
 export type AppView =
@@ -22,7 +23,8 @@ export type AppView =
   | "categorias"
   | "proveedores"
   | "clientes"
-  | "stock";
+  | "stock"
+  | "kardex";
 
 interface Props {
   view: AppView;
@@ -117,6 +119,7 @@ export default function AppShell({ view }: Props) {
             <>
               <a href="/proveedores">Proveedores</a>
               <a href="/compras">Compras de importación</a>
+              <a href="/kardex">Kardex y ajustes</a>
 
               <a
                 href="/empleados"
@@ -180,8 +183,14 @@ export default function AppShell({ view }: Props) {
 
         {view === "stock" && (
           puedeLeerStock
-            ? <StockPage />
+            ? <StockPage admin={isAdmin} />
             : <p role="alert">No tienes permiso para consultar stock.</p>
+        )}
+
+        {view === "kardex" && (
+          isAdmin
+            ? <KardexPage />
+            : <p role="alert">Acceso restringido a Administrador.</p>
         )}
 
         {(

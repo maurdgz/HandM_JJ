@@ -13,4 +13,15 @@ public interface IMovimientoRepository
     Task<IReadOnlyList<MovimientoInventario>> ListarPorCompra(
         int compraId,
         CancellationToken ct);
+
+    /// <summary>
+    /// Kardex del almacén principal. <paramref name="desdeUtc"/> es inclusivo y
+    /// <paramref name="hastaUtc"/> exclusivo; los movimientos previos forman el saldo inicial.
+    /// Devuelve null si el producto no existe.
+    /// </summary>
+    Task<KardexProducto?> Kardex(
+        int productoId,
+        DateTime? desdeUtc,
+        DateTime? hastaUtc,
+        CancellationToken ct);
 }
