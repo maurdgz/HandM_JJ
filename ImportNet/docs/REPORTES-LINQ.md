@@ -66,10 +66,16 @@ Base PostgreSQL nueva con la migración aplicada y la API levantada. Datos:
 - La venta se anuló con `POST /api/ventas/{id}/anulacion`.
 - `dotnet test`: 142 aprobadas, 6 omitidas, 0 fallidas (sin pruebas nuevas en esta entrega).
 
-## Pendiente
+## Pantalla de reportes y descarga a Excel (issue #15)
 
-- Pruebas automáticas de reportes con datos sembrados (quedan para el QA).
-- Pantallas de reportes y exportación a Excel (issue #15).
+Entra como **Administrador**, abre **Reportes** en el menú, elige un reporte y aplica las fechas. Ventas por periodo permite agrupar por día o mes, Productos más vendidos permite cambiar el máximo, Cierre de caja solicita un día y Stock bajo muestra el inventario actual.
+
+**Descargar Excel** usa los filtros aplicados a la tabla. Los encabezados, valores y totales se construyen a partir de las consultas LINQ. El libro muestra los filtros en el título, con moneda PEN donde corresponde y USD separado para compras. El endpoint de descarga responde 403 al Vendedor y 401 a una sesión anónima.
+
+- `GET /api/reportes/{reporte}/tabla` devuelve columnas, filas y totales para la pantalla.
+- `GET /api/reportes/{reporte}/excel` devuelve el libro XLSX con los mismos parámetros.
+- `dotnet test ImportNet.sln -c Release --filter FullyQualifiedName~ReportesExcelTests` verifica las cifras, los encabezados, el formato y los permisos.
+- Con Chrome, Playwright para Python y el frontend instalado mediante `npm ci`, ejecutar `IMPORTNET_BROWSER_TESTS=1 dotnet test ImportNet.sln -c Release --filter FullyQualifiedName~ReportesBrowserTests` para verificar la descarga desde Astro.
 
 ## Integración del dashboard (Día 15, issue #16)
 
@@ -77,4 +83,4 @@ Base PostgreSQL nueva con la migración aplicada y la API levantada. Datos:
 - PostgreSQL ejecuta ahora `GroupBy`, `Sum`, `Count`, orden y límite de ventas por periodo, vendedores y top en el servidor. Margen agrupa en servidor y redondea por producto como antes. Se mantiene la alternativa SQLite para las pruebas existentes.
 - Los tres agregados del KPI comparten una transacción de lectura RepeatableRead para evitar diferencias si se registra una venta durante la consulta. Sin cambios al esquema ni al contrato de los reportes anteriores.
 - `DashboardTests` y `DashboardPostgreSqlTests` verifican las agregaciones, anuladas, descuentos y fronteras UTC-5. La navegación y los permisos se validan con Chrome contra PostgreSQL aislado.
-- La pantalla de Inicio usa estos reportes; la issue #15 conserva su alcance de pantallas de reportes y exportación.
+- La pantalla de Inicio usa los indicadores y gráficos del dashboard. El menú Reportes ofrece las tablas y exportaciones del issue #15.
