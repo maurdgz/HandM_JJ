@@ -43,6 +43,14 @@ public sealed class MovimientoInventario
     public int? ProveedorId { get; set; }
     public int? CompraId { get; set; }
     public int? VentaId { get; set; }
+    public MotivoAjuste? MotivoAjuste { get; set; }
+    public string? Observacion { get; set; }
+
+    // Entrada suma, Salida resta y Ajuste ya trae su signo.
+    public decimal CantidadConSigno => ConSigno(Tipo, Cantidad);
+
+    public static decimal ConSigno(TipoMovimiento tipo, decimal cantidad)
+        => tipo == TipoMovimiento.Salida ? -cantidad : cantidad;
 }
 
 public enum TipoProveedor { Nacional, Internacional }
