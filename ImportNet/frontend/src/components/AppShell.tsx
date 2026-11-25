@@ -13,8 +13,10 @@ import EmpleadosPage from "@/components/EmpleadosPage";
 import PuntoVentaPage from "@/components/PuntoVentaPage";
 import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
+import VentasPage from "@/components/VentasPage";
 
 export type AppView =
+  | "historial"
   | "ventas"
   | "compras"
   | "inicio"
@@ -110,6 +112,7 @@ export default function AppShell({ view }: Props) {
           <a href="/categorias">Categorías</a>
           <a href="/clientes">Clientes</a>
           <a href="/ventas">Punto de venta</a>
+          <a href="/ventas/historial">Historial de ventas</a>
 
           {puedeLeerStock && (
             <a href="/stock">Stock y alertas</a>
@@ -174,6 +177,7 @@ export default function AppShell({ view }: Props) {
         )}
 
         {view === "ventas" && <PuntoVentaPage />}
+        {view === "historial" && <VentasPage user={user} />}
 
         {view === "empleados" && (
           isAdmin
