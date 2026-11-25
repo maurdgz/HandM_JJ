@@ -8,6 +8,23 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: ImportNet
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: importnet_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ImportNet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      IMPORTNET_VENTAS_POSTGRES_TESTS: '1'
+      ConnectionStrings__ImportNet: 'Host=localhost;Port=5432;Database=ImportNet;Username=postgres;Password=importnet_ci_only'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

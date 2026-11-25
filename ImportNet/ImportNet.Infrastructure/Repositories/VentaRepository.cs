@@ -9,7 +9,9 @@ namespace ImportNet.Infrastructure.Repositories;
 internal sealed class VentaRepository(AppDbContext context)
     : GenericRepository<Venta>(context), IVentaRepository
 {
-    private IQueryable<VentaResumen> Consulta(int? empleadoId)
+    private IQueryable<VentaResumen> Consulta(
+        int? empleadoId, int? id = null,
+        DateTime? desdeUtc = null, DateTime? hastaUtcExclusivo = null)
     {
         var ventas = _context.Set<Venta>().AsNoTracking();
 
@@ -19,6 +21,10 @@ internal sealed class VentaRepository(AppDbContext context)
                 v => v.EmpleadoId == empleadoId.Value);
         }
 
+        if (id.HasValue) ventas = ventas.Where(v => v.Id == id.Value);
+        if (desdeUtc.HasValue) ventas = ventas.Where(v => v.Fecha >= desdeUtc.Value);
+        if (hastaUtcExclusivo.HasValue) ventas = ventas.Where(v => v.Fecha < hastaUtcExclusivo.Value);
+
         return
             from v in ventas
             join e in _context.Set<Empleado>()
@@ -26,6 +32,7 @@ internal sealed class VentaRepository(AppDbContext context)
             join c in _context.Set<Cliente>()
                 on v.ClienteId equals (int?)c.Id into clientes
             from c in clientes.DefaultIfEmpty()
+            orderby v.Fecha descending, v.Id descending
             select new VentaResumen(
                 v.Id,
                 v.Numero,
@@ -49,13 +56,9 @@ internal sealed class VentaRepository(AppDbContext context)
         int? empleadoId,
         CancellationToken ct)
     {
-        return await Consulta(empleadoId)
-            .Where(v =>
-                v.Fecha >= desdeUtc &&
-                v.Fecha < hastaUtcExclusivo)
-            .OrderByDescending(v => v.Fecha)
-            .ThenByDescending(v => v.Id)
+        var ventas = await Consulta(empleadoId, desdeUtc: desdeUtc, hastaUtcExclusivo: hastaUtcExclusivo)
             .ToListAsync(ct);
+        return ventas.Select(ConFechaUtc).ToArray();
     }
 
     public async Task<NotaVenta?> Nota(
@@ -63,8 +66,8 @@ internal sealed class VentaRepository(AppDbContext context)
         int? empleadoId,
         CancellationToken ct)
     {
-        var venta = await Consulta(empleadoId)
-            .SingleOrDefaultAsync(v => v.Id == id, ct);
+        var venta = await Consulta(empleadoId, id)
+            .SingleOrDefaultAsync(ct);
 
         if (venta is null)
             return null;
@@ -85,6 +88,9 @@ internal sealed class VentaRepository(AppDbContext context)
                 d.Subtotal))
             .ToListAsync(ct);
 
-        return new NotaVenta(venta, lineas);
+        return new NotaVenta(ConFechaUtc(venta), lineas);
     }
+
+    private static VentaResumen ConFechaUtc(VentaResumen venta)
+        => venta with { Fecha = DateTime.SpecifyKind(venta.Fecha, DateTimeKind.Utc) };
 }
