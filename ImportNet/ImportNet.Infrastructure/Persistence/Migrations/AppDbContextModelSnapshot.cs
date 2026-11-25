@@ -362,11 +362,21 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
 
+                    b.Property<int?>("CompraId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("EmpleadoId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("MotivoAjuste")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<int>("ProductoId")
                         .HasColumnType("integer");
@@ -384,13 +394,22 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AlmacenId");
 
+                    b.HasIndex("CompraId")
+                        .HasDatabaseName("IX_MovimientoInventario_CompraId");
+
                     b.HasIndex("EmpleadoId");
 
                     b.HasIndex("Fecha");
 
-                    b.HasIndex("ProductoId");
-
                     b.HasIndex("ProveedorId");
+
+                    b.HasIndex("ProductoId", "Fecha")
+                        .HasDatabaseName("IX_Movimiento_ProductoFecha");
+
+                    b.HasIndex("CompraId", "ProductoId", "AlmacenId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Movimiento_EntradaCompraProductoAlmacen")
+                        .HasFilter("\"CompraId\" IS NOT NULL AND \"Tipo\" = 0");
 
                     b.HasIndex("VentaId", "ProductoId", "AlmacenId", "Tipo")
                         .IsUnique();
@@ -398,6 +417,8 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                     b.ToTable("MovimientoInventario", null, t =>
                         {
                             t.HasCheckConstraint("CK_Movimiento_Cantidad", "(\"Tipo\" IN (0, 1) AND \"Cantidad\" > 0) OR (\"Tipo\" = 2 AND \"Cantidad\" <> 0)");
+
+                            t.HasCheckConstraint("CK_Movimiento_MotivoAjuste", "(\"Tipo\" = 2 AND \"MotivoAjuste\" IN (0, 1, 2, 3)) OR (\"Tipo\" <> 2 AND \"MotivoAjuste\" IS NULL)");
                         });
                 });
 
@@ -894,6 +915,11 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AlmacenId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("ImportNet.Domain.Entities.Compra", null)
+                        .WithMany()
+                        .HasForeignKey("CompraId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ImportNet.Domain.Entities.Empleado", null)
                         .WithMany()

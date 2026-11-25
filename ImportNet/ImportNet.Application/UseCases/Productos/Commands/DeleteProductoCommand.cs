@@ -9,7 +9,7 @@ internal sealed class DeleteProductoCommandHandler(IUnitOfWork uow) : IRequestHa
     {
         var entidad = await uow.Productos.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Producto no encontrado.");
         if (await uow.Productos.TieneReferencias(r.Id, ct))
-            throw new ConflictoException("El producto tiene inventario, proveedores o historial y no se puede eliminar.");
+            throw new ConflictoException("El producto tiene inventario, proveedores o historial y no se puede eliminar; desactívelo.");
         uow.Productos.Eliminar(entidad);
         await uow.Guardar(ct);
         return Unit.Value;

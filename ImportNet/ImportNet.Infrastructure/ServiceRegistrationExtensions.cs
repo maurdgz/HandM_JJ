@@ -22,6 +22,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IEmpleadoRepository, EmpleadoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IRegistroVenta, RegistroVenta>();
         services.AddSingleton<ImportNet.Application.Security.IPasswordHasher, BcryptPasswordHasher>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUsuarioActual, UsuarioActual>();

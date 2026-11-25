@@ -11,6 +11,14 @@ namespace ImportNet.API.Controllers.Api;
 public sealed class VentasController(IMediator mediator)
     : ControllerBase
 {
+    [HttpPost]
+    public async Task<IActionResult> Registrar(
+        RegistrarVentaCommand command, CancellationToken ct)
+    {
+        var venta = await mediator.Send(command, ct);
+        return CreatedAtAction(nameof(Obtener), new { id = venta.Id }, venta);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Historial(
         DateOnly? desde,

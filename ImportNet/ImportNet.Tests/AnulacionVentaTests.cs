@@ -70,14 +70,9 @@ public sealed class AnulacionVentaTests
             ventaId = venta.Id;
 
             db.AddRange(
-                new DetalleVenta
+                new DetalleVenta(productoId, 2m, 10m, 0m)
                 {
-                    VentaId = ventaId,
-                    ProductoId = productoId,
-                    Cantidad = 2m,
-                    PrecioUnitario = 10m,
-                    Descuento = 0m,
-                    Subtotal = 20m
+                    VentaId = ventaId
                 },
                 new Inventario
                 {
