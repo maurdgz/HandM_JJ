@@ -103,6 +103,7 @@ export default function VentasPage({ user }: { user: UsuarioDto }) {
           <TableCell>{venta.vendedor}</TableCell><TableCell>{venta.cliente}</TableCell>
           <TableCell>{venta.estado}</TableCell><TableCell>{moneda(venta.total)}</TableCell>
           <TableCell><div className="flex gap-2">
+            <Button variant="outline" asChild><a href={`/ventas/nota?id=${venta.id}`}>Ver nota</a></Button>
             {isAdmin && venta.estado === "Registrada" && <Button variant="destructive" disabled={pending} onClick={() => {
               setMotivo(""); setSelected(venta);
             }}>Anular</Button>}

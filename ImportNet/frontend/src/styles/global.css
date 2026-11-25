@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@media print {
+  @page { size: A4; margin: 14mm; }
+  .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  body > div, astro-island > div { display: block !important; min-height: auto !important; }
+  main { padding: 0 !important; }
+  .nota-venta { max-width: none !important; margin: 0 !important; }
+  .nota-venta article { border: 0 !important; border-radius: 0 !important; padding: 0 !important; box-shadow: none !important; }
+  .nota-venta .overflow-x-auto { overflow: visible !important; }
+  .nota-venta thead { display: table-header-group; }
+  .nota-venta tr { break-inside: avoid; }
+}
+
 :root {
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;

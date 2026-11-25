@@ -14,9 +14,11 @@ import PuntoVentaPage from "@/components/PuntoVentaPage";
 import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
 import VentasPage from "@/components/VentasPage";
+import NotaVentaPage from "@/components/NotaVentaPage";
 
 export type AppView =
   | "historial"
+  | "nota"
   | "ventas"
   | "compras"
   | "inicio"
@@ -178,6 +180,7 @@ export default function AppShell({ view }: Props) {
 
         {view === "ventas" && <PuntoVentaPage />}
         {view === "historial" && <VentasPage user={user} />}
+        {view === "nota" && <NotaVentaPage />}
 
         {view === "empleados" && (
           isAdmin
