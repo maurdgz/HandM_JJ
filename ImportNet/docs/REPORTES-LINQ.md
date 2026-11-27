@@ -74,8 +74,6 @@ Entra como **Administrador**, abre **Reportes** en el menú, elige un reporte y 
 
 - `GET /api/reportes/{reporte}/tabla` devuelve columnas, filas y totales para la pantalla.
 - `GET /api/reportes/{reporte}/excel` devuelve el libro XLSX con los mismos parámetros.
-- `dotnet test ImportNet.sln -c Release --filter FullyQualifiedName~ReportesExcelTests` verifica las cifras, los encabezados, el formato y los permisos.
-- Con Chrome, Playwright para Python y el frontend instalado mediante `npm ci`, ejecutar `IMPORTNET_BROWSER_TESTS=1 dotnet test ImportNet.sln -c Release --filter FullyQualifiedName~ReportesBrowserTests` para verificar la descarga desde Astro.
 
 ## Integración del dashboard (Día 15, issue #16)
 
