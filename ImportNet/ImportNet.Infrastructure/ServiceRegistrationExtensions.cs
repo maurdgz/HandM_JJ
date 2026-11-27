@@ -1,8 +1,10 @@
 using ImportNet.Application.Security;
 using ImportNet.Application.UseCases.Empleados;
+using ImportNet.Application.UseCases.Reportes;
 using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Identity;
 using ImportNet.Infrastructure.Persistence;
+using ImportNet.Infrastructure.Reportes;
 using ImportNet.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +25,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IUsuarioActual, UsuarioActual>();
         services.AddScoped<IAdministracionEmpleados, AdministracionEmpleados>();
+        services.AddSingleton<IExportadorExcel, ExportadorExcel>();
         services.AddSingleton<ImportNet.Application.Security.IPasswordHasher, BcryptPasswordHasher>();
         services.AddHttpContextAccessor();
 
