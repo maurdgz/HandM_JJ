@@ -11,7 +11,7 @@ internal sealed class RegistroVenta(AppDbContext db) : IRegistroVenta
 {
     public async Task<VentaRegistradaDto> Registrar(int empleadoId, int? clienteId, IReadOnlyList<LineaVentaEntrada> lineas, CancellationToken ct)
     {
-        if (lineas is null || lineas.Count == 0 || lineas.Count > 100)
+        if (lineas is null || lineas.Count == 0 || lineas.Count > 100 || lineas.Any(x => x is null))
             throw new ReglaNegocioException("La venta debe tener entre 1 y 100 líneas.");
         if (lineas.Any(x => x.ProductoId <= 0 || x.Cantidad <= 0 || x.Cantidad > 1000000 || decimal.Round(x.Cantidad, 3) != x.Cantidad || x.Descuento < 0 || decimal.Round(x.Descuento, 2) != x.Descuento))
             throw new ReglaNegocioException("Producto, cantidad o descuento inválido.");
