@@ -157,6 +157,9 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ProveedorId");
 
+                    b.HasIndex("Estado", "Fecha")
+                        .HasDatabaseName("IX_Compra_EstadoFecha");
+
                     b.HasIndex("Fecha", "Id");
 
                     b.ToTable("Compra", null, t =>
@@ -608,12 +611,16 @@ namespace ImportNet.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ClienteId");
 
-                    b.HasIndex("EmpleadoId");
-
                     b.HasIndex("Fecha");
 
                     b.HasIndex("Numero")
                         .IsUnique();
+
+                    b.HasIndex("EmpleadoId", "Fecha")
+                        .HasDatabaseName("IX_Venta_EmpleadoFecha");
+
+                    b.HasIndex("Estado", "Fecha")
+                        .HasDatabaseName("IX_Venta_EstadoFecha");
 
                     b.ToTable("Venta", null, t =>
                         {
