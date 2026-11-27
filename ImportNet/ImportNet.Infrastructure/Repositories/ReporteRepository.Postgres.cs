@@ -5,6 +5,49 @@ namespace ImportNet.Infrastructure.Repositories;
 
 internal sealed partial class ReporteRepository
 {
+    private IQueryable<LineaProductoReporte> LineasProductosPostgres(DateTime desdeUtc, DateTime hastaUtc)
+        => from venta in VentasRegistradas(desdeUtc, hastaUtc)
+           join detalle in db.Set<DetalleVenta>().AsNoTracking() on venta.Id equals detalle.VentaId
+           join producto in db.Set<Producto>().AsNoTracking() on detalle.ProductoId equals producto.Id
+           select new LineaProductoReporte { ProductoId = producto.Id, Codigo = producto.Codigo,
+               Nombre = producto.Nombre, UnidadMedida = producto.UnidadMedida, CostoPromedio = producto.CostoPromedio,
+               Cantidad = detalle.Cantidad, Subtotal = detalle.Subtotal };
+
+    private async Task<IReadOnlyList<TopProducto>> TopProductosPostgres(
+        DateTime desdeUtc, DateTime hastaUtc, int top, CancellationToken ct)
+        => await LineasProductosPostgres(desdeUtc, hastaUtc)
+            .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.UnidadMedida })
+            .Select(g => new TopProducto(g.Key.ProductoId, g.Key.Codigo, g.Key.Nombre, g.Key.UnidadMedida,
+                g.Sum(x => x.Cantidad), g.Sum(x => x.Subtotal)))
+            .OrderByDescending(x => x.Cantidad).ThenByDescending(x => x.Total).ThenBy(x => x.ProductoId)
+            .Take(top).ToListAsync(ct);
+
+    private async Task<IReadOnlyList<MargenProducto>> MargenPorProductoPostgres(
+        DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
+    {
+        var filas = await LineasProductosPostgres(desdeUtc, hastaUtc)
+            .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.CostoPromedio })
+            .Select(g => new { g.Key.ProductoId, g.Key.Codigo, g.Key.Nombre, g.Key.CostoPromedio,
+                Cantidad = g.Sum(x => x.Cantidad), Ingreso = g.Sum(x => x.Subtotal) }).ToListAsync(ct);
+        return filas.Select(x => {
+            var costo = decimal.Round(x.Cantidad * x.CostoPromedio, 2, MidpointRounding.AwayFromZero);
+            var margen = x.Ingreso - costo;
+            return new MargenProducto(x.ProductoId, x.Codigo, x.Nombre, x.Cantidad, x.Ingreso,
+                x.CostoPromedio, costo, margen, x.Ingreso == 0 ? 0 : decimal.Round(margen / x.Ingreso * 100, 2, MidpointRounding.AwayFromZero));
+        }).OrderByDescending(x => x.Margen).ThenBy(x => x.ProductoId).ToArray();
+    }
+
+    private sealed class LineaProductoReporte
+    {
+        public int ProductoId { get; init; }
+        public string Codigo { get; init; } = "";
+        public string Nombre { get; init; } = "";
+        public string UnidadMedida { get; init; } = "";
+        public decimal CostoPromedio { get; init; }
+        public decimal Cantidad { get; init; }
+        public decimal Subtotal { get; init; }
+    }
+
     private async Task<IReadOnlyList<VentasPorPeriodo>> VentasPorPeriodoPostgres(
         DateTime desdeUtc, DateTime hastaUtc, AgrupacionPeriodo agrupacion, CancellationToken ct)
     {

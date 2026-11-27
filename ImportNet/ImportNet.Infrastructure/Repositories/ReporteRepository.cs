@@ -108,6 +108,9 @@ internal sealed partial class ReporteRepository(AppDbContext db) : IReporteRepos
         int top,
         CancellationToken ct)
     {
+        if (db.Database.IsNpgsql())
+            return await TopProductosPostgres(desdeUtc, hastaUtc, top, ct);
+
         var lineas = await LineasVendidas(desdeUtc, hastaUtc, ct);
 
         return lineas
@@ -131,6 +134,9 @@ internal sealed partial class ReporteRepository(AppDbContext db) : IReporteRepos
         DateTime hastaUtc,
         CancellationToken ct)
     {
+        if (db.Database.IsNpgsql())
+            return await MargenPorProductoPostgres(desdeUtc, hastaUtc, ct);
+
         var lineas = await LineasVendidas(desdeUtc, hastaUtc, ct);
 
         return lineas
