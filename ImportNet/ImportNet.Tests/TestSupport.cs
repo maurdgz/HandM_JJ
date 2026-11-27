@@ -70,10 +70,8 @@ internal sealed class ApplicationFixture : IDisposable
 internal sealed class SmokeFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection connection = new("Data Source=:memory:");
-    private readonly string? webRoot;
-    public SmokeFactory(bool useKestrel = false, string? webRoot = null)
+    public SmokeFactory(bool useKestrel = false)
     {
-        this.webRoot = webRoot;
         connection.Open();
         if (useKestrel) UseKestrel(0);
     }
@@ -82,7 +80,6 @@ internal sealed class SmokeFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.ConfigureAppConfiguration((_, config) => TestSupport.ConfigureJwt(config));
         builder.UseContentRoot(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../ImportNet.API")));
-        if (webRoot is not null) builder.UseWebRoot(webRoot);
         builder.ConfigureServices(s => TestSupport.UseTestDatabase(s, connection));
     }
     public void InitializeSchema()

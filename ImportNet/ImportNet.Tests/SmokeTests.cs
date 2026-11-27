@@ -41,7 +41,7 @@ public sealed class SmokeTests
         Assert.True(paths.GetProperty("/api/auth/me").TryGetProperty("get", out _));
         foreach (var path in new[] { "/api/auth/me", "/api/productos", "/api/categorias", "/api/empleados" })
             Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
-        foreach (var path in new[] { "/cuenta/login", "/cuenta/csrf" })
+        foreach (var path in new[] { "/", "/cuenta/login", "/cuenta/csrf", "/productos", "/empleados" })
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(path)).StatusCode);
     }
 
