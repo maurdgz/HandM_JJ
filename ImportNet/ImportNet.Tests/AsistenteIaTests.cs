@@ -156,6 +156,80 @@ public sealed class AsistenteIaTests
     }
 
     [Fact]
+    public async Task AsistenteIaService_Gemini503_HaceFailoverAModeloDisponible()
+    {
+        var jsonModels = JsonSerializer.Serialize(new
+        {
+            models = new object[]
+            {
+                new { name = "models/gemini-3.5-flash-lite", supportedGenerationMethods = new[] { "generateContent" } }
+            }
+        });
+
+        var jsonGemini = JsonSerializer.Serialize(new
+        {
+            candidates = new[]
+            {
+                new
+                {
+                    content = new
+                    {
+                        parts = new[]
+                        {
+                            new
+                            {
+                                text = """
+                                    {
+                                      "resumenEjecutivo": "Failover tras 503 exitoso.",
+                                      "recomendaciones": ["Revisar stock"],
+                                      "alertasPrioritarias": [],
+                                      "respuestaPregunta": null
+                                    }
+                                    """
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        var service = CrearServicio(req =>
+        {
+            var path = req.RequestUri!.AbsolutePath;
+            if (path.EndsWith("/models/gemini-flash-latest:generateContent", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                {
+                    Content = new StringContent("{\"error\":{\"message\":\"This model is currently experiencing high demand.\"}}", Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (path.EndsWith("/v1beta/models", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(jsonModels, Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (path.EndsWith("/models/gemini-3.5-flash-lite:generateContent", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(jsonGemini, Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.BadRequest);
+        }, new IaSettings { Provider = "Gemini", ApiKey = "test-key", Model = "gemini-flash-latest" });
+
+        var res = await service.AnalizarNegocioAsync(CrearContexto(), null);
+
+        Assert.Equal("Failover tras 503 exitoso.", res.ResumenEjecutivo);
+        Assert.Equal("gemini-3.5-flash-lite", res.Modelo);
+    }
+
+    [Fact]
     public async Task AsistenteIaService_OpenAiError500_LanzaServicioExternoException()
     {
         var service = CrearServicio(

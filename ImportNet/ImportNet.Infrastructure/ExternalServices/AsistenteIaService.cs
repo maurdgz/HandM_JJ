@@ -132,18 +132,22 @@ internal sealed class AsistenteIaService(
         var (status, body) = await EnviarGeminiAsync(baseUrl, modelo, apiKey, payload, ct);
         var modeloUsado = modelo;
 
-        if (status == HttpStatusCode.NotFound)
+        if (EsErrorRecuperableDeModelo(status))
         {
-            var alternativo = await DescubrirModeloGeminiAsync(baseUrl, apiKey, modelo, ct);
-            if (!string.IsNullOrWhiteSpace(alternativo))
+            var alternativos = await DescubrirModelosGeminiAsync(baseUrl, apiKey, modelo, ct);
+            foreach (var alternativo in alternativos)
             {
                 logger.LogWarning(
-                    "Modelo Gemini {ModeloConfigurado} devolvió 404; reintentando con el modelo disponible {ModeloAlternativo}.",
-                    modelo,
+                    "Modelo Gemini {ModeloConfigurado} devolvió HTTP {StatusCode}; probando modelo alternativo {ModeloAlternativo}.",
+                    modeloUsado,
+                    (int)status,
                     alternativo);
 
                 modeloUsado = alternativo;
                 (status, body) = await EnviarGeminiAsync(baseUrl, alternativo, apiKey, payload, ct);
+
+                if ((int)status is >= 200 and < 300 || !EsErrorRecuperableDeModelo(status))
+                    break;
             }
         }
 
@@ -181,7 +185,12 @@ internal sealed class AsistenteIaService(
         return (response.StatusCode, body);
     }
 
-    private async Task<string?> DescubrirModeloGeminiAsync(
+    private static bool EsErrorRecuperableDeModelo(HttpStatusCode status)
+        => status is HttpStatusCode.NotFound
+            or HttpStatusCode.TooManyRequests
+            or HttpStatusCode.ServiceUnavailable;
+
+    private async Task<IReadOnlyList<string>> DescubrirModelosGeminiAsync(
         string baseUrl,
         string apiKey,
         string modeloActual,
@@ -192,13 +201,13 @@ internal sealed class AsistenteIaService(
 
         using var response = await httpClient.SendAsync(request, ct);
         if (!response.IsSuccessStatusCode)
-            return null;
+            return [];
 
         var body = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(body);
 
         if (!doc.RootElement.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
-            return null;
+            return [];
 
         var candidatos = new List<string>();
         foreach (var item in models.EnumerateArray())
@@ -233,12 +242,14 @@ internal sealed class AsistenteIaService(
             candidatos.Add(nombre);
         }
 
-        return candidatos.FirstOrDefault(m => string.Equals(m, ModeloGeminiPorDefecto, StringComparison.OrdinalIgnoreCase))
-            ?? candidatos
-                .Where(m => m.Contains("flash", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(m => m, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault()
-            ?? candidatos.FirstOrDefault();
+        return candidatos
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(m => m.Contains("flash-lite", StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(m => m.Contains("flash", StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(m => string.Equals(m, ModeloGeminiPorDefecto, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(m => m, StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
     }
 
     private static bool SoportaGenerateContent(JsonElement modelElement)
