@@ -78,6 +78,84 @@ public sealed class AsistenteIaTests
     }
 
     [Fact]
+    public async Task AsistenteIaService_Gemini404_DescubreModeloDisponibleYReintenta()
+    {
+        var jsonModels = JsonSerializer.Serialize(new
+        {
+            models = new object[]
+            {
+                new
+                {
+                    name = "models/gemini-3.5-flash",
+                    supportedGenerationMethods = new[] { "generateContent" }
+                }
+            }
+        });
+
+        var jsonGemini = JsonSerializer.Serialize(new
+        {
+            candidates = new[]
+            {
+                new
+                {
+                    content = new
+                    {
+                        parts = new[]
+                        {
+                            new
+                            {
+                                text = """
+                                    {
+                                      "resumenEjecutivo": "Recuperado con modelo alternativo.",
+                                      "recomendaciones": ["Mantener stock"],
+                                      "alertasPrioritarias": [],
+                                      "respuestaPregunta": null
+                                    }
+                                    """
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        var service = CrearServicio(req =>
+        {
+            var path = req.RequestUri!.AbsolutePath;
+            if (path.EndsWith("/models/gemini-2.5-flash:generateContent", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    Content = new StringContent("{\"error\":{\"message\":\"Model not found\"}}", Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (path.EndsWith("/v1beta/models", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(jsonModels, Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (path.EndsWith("/models/gemini-3.5-flash:generateContent", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(jsonGemini, Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.BadRequest);
+        }, new IaSettings { Provider = "Gemini", ApiKey = "test-key", Model = "gemini-2.5-flash" });
+
+        var res = await service.AnalizarNegocioAsync(CrearContexto(), null);
+
+        Assert.Equal("Recuperado con modelo alternativo.", res.ResumenEjecutivo);
+        Assert.Equal("gemini-3.5-flash", res.Modelo);
+    }
+
+    [Fact]
     public async Task AsistenteIaService_OpenAiError500_LanzaServicioExternoException()
     {
         var service = CrearServicio(

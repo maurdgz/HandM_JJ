@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -18,6 +19,9 @@ internal sealed class AsistenteIaService(
     IOptions<IaSettings> options,
     ILogger<AsistenteIaService> logger) : IAsistenteIaService
 {
+    private const string ModeloGeminiPorDefecto = "gemini-flash-latest";
+    private const string ModeloOpenAiPorDefecto = "gpt-4o-mini";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -35,7 +39,9 @@ internal sealed class AsistenteIaService(
 
         var proveedor = string.IsNullOrWhiteSpace(settings.Provider) ? "Gemini" : settings.Provider.Trim();
         var modelo = string.IsNullOrWhiteSpace(settings.Model)
-            ? (string.Equals(proveedor, "OpenAI", StringComparison.OrdinalIgnoreCase) ? "gpt-4o-mini" : "gemini-2.5-flash")
+            ? (string.Equals(proveedor, "OpenAI", StringComparison.OrdinalIgnoreCase)
+                ? ModeloOpenAiPorDefecto
+                : ModeloGeminiPorDefecto)
             : settings.Model.Trim();
 
         var systemPrompt = """
@@ -60,11 +66,18 @@ internal sealed class AsistenteIaService(
         }, JsonOptions);
 
         string contenidoCrudo;
+        string modeloUsado;
         try
         {
-            contenidoCrudo = string.Equals(proveedor, "OpenAI", StringComparison.OrdinalIgnoreCase)
-                ? await InvocarOpenAiAsync(settings, modelo, systemPrompt, userPayload, ct)
-                : await InvocarGeminiAsync(settings, modelo, systemPrompt, userPayload, ct);
+            if (string.Equals(proveedor, "OpenAI", StringComparison.OrdinalIgnoreCase))
+            {
+                contenidoCrudo = await InvocarOpenAiAsync(settings, modelo, systemPrompt, userPayload, ct);
+                modeloUsado = modelo;
+            }
+            else
+            {
+                (contenidoCrudo, modeloUsado) = await InvocarGeminiAsync(settings, modelo, systemPrompt, userPayload, ct);
+            }
         }
         catch (ServicioExternoException)
         {
@@ -81,10 +94,10 @@ internal sealed class AsistenteIaService(
             throw new ServicioExternoException("No se pudo conectar con el servicio externo de IA.", ex);
         }
 
-        return ParsearRespuesta(contenidoCrudo, proveedor, modelo);
+        return ParsearRespuesta(contenidoCrudo, proveedor, modeloUsado);
     }
 
-    private async Task<string> InvocarGeminiAsync(
+    private async Task<(string Contenido, string ModeloUsado)> InvocarGeminiAsync(
         IaSettings settings,
         string modelo,
         string systemPrompt,
@@ -95,10 +108,8 @@ internal sealed class AsistenteIaService(
             ? "https://generativelanguage.googleapis.com"
             : settings.BaseUrl.TrimEnd('/');
 
-        var url = $"{baseUrl}/v1beta/models/{Uri.EscapeDataString(modelo)}:generateContent";
-        using var request = new HttpRequestMessage(HttpMethod.Post, url);
-        request.Headers.Add("x-goog-api-key", settings.ApiKey.Trim());
-        request.Content = JsonContent.Create(new
+        var apiKey = settings.ApiKey.Trim();
+        var payload = new
         {
             systemInstruction = new
             {
@@ -116,15 +127,30 @@ internal sealed class AsistenteIaService(
                 responseMimeType = "application/json",
                 temperature = 0.2
             }
-        });
+        };
 
-        using var response = await httpClient.SendAsync(request, ct);
-        var body = await response.Content.ReadAsStringAsync(ct);
+        var (status, body) = await EnviarGeminiAsync(baseUrl, modelo, apiKey, payload, ct);
+        var modeloUsado = modelo;
 
-        if (!response.IsSuccessStatusCode)
+        if (status == HttpStatusCode.NotFound)
         {
-            logger.LogError("Gemini respondió HTTP {StatusCode}: {Body}", (int)response.StatusCode, body);
-            throw new ServicioExternoException($"El servicio externo de IA respondió con estado {(int)response.StatusCode}.");
+            var alternativo = await DescubrirModeloGeminiAsync(baseUrl, apiKey, modelo, ct);
+            if (!string.IsNullOrWhiteSpace(alternativo))
+            {
+                logger.LogWarning(
+                    "Modelo Gemini {ModeloConfigurado} devolvió 404; reintentando con el modelo disponible {ModeloAlternativo}.",
+                    modelo,
+                    alternativo);
+
+                modeloUsado = alternativo;
+                (status, body) = await EnviarGeminiAsync(baseUrl, alternativo, apiKey, payload, ct);
+            }
+        }
+
+        if ((int)status is < 200 or >= 300)
+        {
+            logger.LogError("Gemini respondió HTTP {StatusCode}: {Body}", (int)status, body);
+            throw new ServicioExternoException(FormatearErrorExterno(status, body));
         }
 
         using var doc = JsonDocument.Parse(body);
@@ -135,7 +161,101 @@ internal sealed class AsistenteIaService(
             .GetProperty("text")
             .GetString();
 
-        return text ?? throw new ServicioExternoException("La respuesta de IA no incluyó contenido.");
+        return (text ?? throw new ServicioExternoException("La respuesta de IA no incluyó contenido."), modeloUsado);
+    }
+
+    private async Task<(HttpStatusCode Status, string Body)> EnviarGeminiAsync(
+        string baseUrl,
+        string modelo,
+        string apiKey,
+        object payload,
+        CancellationToken ct)
+    {
+        var url = $"{baseUrl}/v1beta/models/{Uri.EscapeDataString(modelo)}:generateContent";
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Add("x-goog-api-key", apiKey);
+        request.Content = JsonContent.Create(payload);
+
+        using var response = await httpClient.SendAsync(request, ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        return (response.StatusCode, body);
+    }
+
+    private async Task<string?> DescubrirModeloGeminiAsync(
+        string baseUrl,
+        string apiKey,
+        string modeloActual,
+        CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1beta/models");
+        request.Headers.Add("x-goog-api-key", apiKey);
+
+        using var response = await httpClient.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(body);
+
+        if (!doc.RootElement.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var candidatos = new List<string>();
+        foreach (var item in models.EnumerateArray())
+        {
+            if (!item.TryGetProperty("name", out var nameProp))
+                continue;
+
+            var nombre = nameProp.GetString();
+            if (string.IsNullOrWhiteSpace(nombre))
+                continue;
+
+            const string prefijo = "models/";
+            if (nombre.StartsWith(prefijo, StringComparison.Ordinal))
+                nombre = nombre[prefijo.Length..];
+
+            if (string.Equals(nombre, modeloActual, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!SoportaGenerateContent(item))
+                continue;
+
+            if (!nombre.Contains("gemini", StringComparison.OrdinalIgnoreCase)
+                || nombre.Contains("embedding", StringComparison.OrdinalIgnoreCase)
+                || nombre.Contains("image", StringComparison.OrdinalIgnoreCase)
+                || nombre.Contains("tts", StringComparison.OrdinalIgnoreCase)
+                || nombre.Contains("audio", StringComparison.OrdinalIgnoreCase)
+                || nombre.Contains("live", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            candidatos.Add(nombre);
+        }
+
+        return candidatos.FirstOrDefault(m => string.Equals(m, ModeloGeminiPorDefecto, StringComparison.OrdinalIgnoreCase))
+            ?? candidatos
+                .Where(m => m.Contains("flash", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(m => m, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault()
+            ?? candidatos.FirstOrDefault();
+    }
+
+    private static bool SoportaGenerateContent(JsonElement modelElement)
+    {
+        if (!modelElement.TryGetProperty("supportedGenerationMethods", out var methods)
+            || methods.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var m in methods.EnumerateArray())
+        {
+            if (string.Equals(m.GetString(), "generateContent", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private async Task<string> InvocarOpenAiAsync(
@@ -170,7 +290,7 @@ internal sealed class AsistenteIaService(
         if (!response.IsSuccessStatusCode)
         {
             logger.LogError("OpenAI respondió HTTP {StatusCode}: {Body}", (int)response.StatusCode, body);
-            throw new ServicioExternoException($"El servicio externo de IA respondió con estado {(int)response.StatusCode}.");
+            throw new ServicioExternoException(FormatearErrorExterno(response.StatusCode, body));
         }
 
         using var doc = JsonDocument.Parse(body);
@@ -181,6 +301,39 @@ internal sealed class AsistenteIaService(
             .GetString();
 
         return text ?? throw new ServicioExternoException("La respuesta de IA no incluyó contenido.");
+    }
+
+    private static string FormatearErrorExterno(HttpStatusCode status, string body)
+    {
+        var detalle = ExtraerMensajeError(body);
+        return string.IsNullOrWhiteSpace(detalle)
+            ? $"El servicio externo de IA respondió con estado {(int)status}."
+            : $"El servicio externo de IA respondió con estado {(int)status}: {detalle}";
+    }
+
+    private static string? ExtraerMensajeError(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("message", out var msg))
+            {
+                var texto = msg.GetString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(texto))
+                    return texto.Length <= 200 ? texto : texto[..200] + "…";
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignorar cuerpo no JSON
+        }
+
+        return null;
     }
 
     private RespuestaIaDto ParsearRespuesta(string crudo, string proveedor, string modelo)

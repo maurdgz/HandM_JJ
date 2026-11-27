@@ -39,8 +39,8 @@ dotnet run --project ImportNet.API --launch-profile ImportNet
 En desarrollo local (User Secrets) o en producción (variables de entorno):
 
 ```bash
-Ia__Provider=Gemini        # "Gemini" o "OpenAI"
-Ia__Model=gemini-2.5-flash # o "gpt-4o-mini" para OpenAI
+Ia__Provider=Gemini          # "Gemini" o "OpenAI"
+Ia__Model=gemini-flash-latest # o "gpt-4o-mini" para OpenAI
 Ia__ApiKey=<TU_API_KEY>
 ```
 

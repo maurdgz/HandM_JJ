@@ -31,7 +31,7 @@ services:
       - key: Ia__Provider
         value: Gemini
       - key: Ia__Model
-        value: gemini-2.5-flash
+        value: gemini-flash-latest
       - key: Ia__ApiKey
         sync: false # Pegar API Key de Gemini (o cambiar Ia__Provider a OpenAI y pegar API Key)
       - key: Bootstrap__AutoCreateOnStartup
