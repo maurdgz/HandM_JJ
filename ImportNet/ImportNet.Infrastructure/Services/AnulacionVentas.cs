@@ -11,7 +11,7 @@ internal sealed class AnulacionVentas(
     AppDbContext db,
     IUsuarioActual actor) : IAnulacionVentas
 {
-    public async Task Anular(
+    public async Task<VentaAnuladaDto> Anular(
         int ventaId,
         string motivo,
         int empleadoId,
@@ -102,6 +102,7 @@ internal sealed class AnulacionVentas(
             }
 
             venta.Anular(motivo);
+            var reposiciones = new List<StockRepuestoDto>();
 
             foreach (var salida in salidas)
             {
@@ -114,6 +115,7 @@ internal sealed class AnulacionVentas(
                         "No se encontró el inventario de una línea vendida.");
 
                 inventario.Cantidad += salida.Cantidad;
+                reposiciones.Add(new StockRepuestoDto(salida.ProductoId, salida.Cantidad, inventario.Cantidad));
 
                 db.Add(new MovimientoInventario
                 {
@@ -123,12 +125,15 @@ internal sealed class AnulacionVentas(
                     Cantidad = salida.Cantidad,
                     EmpleadoId = empleadoId,
                     VentaId = venta.Id,
-                    Fecha = venta.FechaAnulacion!.Value
+                    Fecha = venta.FechaAnulacion!.Value,
+                    Observacion = venta.MotivoAnulacion
                 });
             }
 
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
+            return new VentaAnuladaDto(venta.Id, venta.Numero, venta.Estado.ToString(),
+                venta.MotivoAnulacion!, venta.FechaAnulacion!.Value, reposiciones);
         }
         catch (DbUpdateConcurrencyException)
         {

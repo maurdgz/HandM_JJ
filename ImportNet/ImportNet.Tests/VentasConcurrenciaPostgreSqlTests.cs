@@ -116,7 +116,7 @@ public sealed class VentasConcurrenciaPostgreSqlTests
             admin.PostAsJsonAsync($"/api/ventas/{venta.Id}/anulacion", new { motivo = "Devolución B" }, timeout.Token));
         try
         {
-            Assert.Single(responses, response => response.StatusCode == HttpStatusCode.NoContent);
+            Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
             Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
             await VentasDatosPrueba.ComprobarReposicion(factory.Services, venta.Id, productos);
         }

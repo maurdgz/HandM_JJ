@@ -56,13 +56,13 @@ dotnet test ImportNet.sln --configuration Release --filter 'FullyQualifiedName~V
 Remove-Item Env:IMPORTNET_BROWSER_TESTS
 ```
 
-La prueba usa Kestrel, SQLite temporal y cuentas sintéticas, sin utilizar cuentas reales ni iniciar o detener servidores Astro del usuario. Comprueba redirección sin sesión, login, filtros por día peruano, datos de la nota, estilos de impresión, anulación, repetición 409, Vendedor sin anulación, venta ajena 404 y cierre por token inválido. Las credenciales de prueba se pasan a Python por stdin.
+La prueba usa Kestrel, SQLite temporal y cuentas sintéticas, sin utilizar cuentas reales ni iniciar o detener servidores Astro del usuario. Comprueba redirección sin sesión, login, filtros por día peruano, datos de la nota, estilos de impresión, anulación, repetición 409, Vendedor sin anulación, venta ajena 403 y cierre por token inválido. Las credenciales de prueba se pasan a Python por stdin.
 
 Evidencia local de esta entrega:
 
 - Regresión sin navegador: 152 aprobadas, 0 fallidas, 4 omitidas; incluye concurrencia de anulación en PostgreSQL.
 - Chrome de ventas: 1 aprobada. Seguridad HTTP comprobada con entradas nulas, incompletas y JSON inválido.
-- Astro check: 0 errores, 0 warnings y 10 hints de deprecaciones existentes; build: 13 páginas. .NET conserva dos avisos xUnit2031 preexistentes en pruebas de recepción.
+- Astro check: 0 errores, 0 warnings y 10 hints de deprecaciones existentes; build integrado: 15 páginas. .NET conserva dos avisos xUnit2031 preexistentes en pruebas de recepción.
 - Publish incluye inicio, login, historial, nota y recursos de Astro.
 - dotnet run en un puerto temporal respondió 200 para páginas y 401 para /api/ventas anónimo; el proceso de comprobación se detuvo al terminar.
 - Revisión de patrones y configuración en archivos versionados actuales: sin credenciales reales encontradas. La clave del contenedor PostgreSQL en CI es exclusivamente de prueba. Esta comprobación no equivale a auditar todo el historial Git.

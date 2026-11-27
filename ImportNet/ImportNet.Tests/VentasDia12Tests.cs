@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ImportNet.Application.UseCases.Ventas;
 using ImportNet.Domain.Entities;
-using ImportNet.Domain.ReadModels;
+using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -80,20 +80,27 @@ public sealed class VentasDia12Tests
         var productos = await VentasDatosPrueba.Catalogo(factory.Services);
         var venta = await VentasDatosPrueba.Registrar(vendedor, productos);
         Assert.Equal(27m, venta.Total);
+        await VentasDatosPrueba.Registrar(admin, await VentasDatosPrueba.Catalogo(factory.Services));
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync("/api/ventas")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync($"/api/ventas/{venta.Id}")).StatusCode);
-        Assert.Contains((await admin.GetFromJsonAsync<List<VentaResumen>>("/api/ventas"))!, v => v.Id == venta.Id);
-        Assert.Single((await vendedor.GetFromJsonAsync<List<VentaResumen>>("/api/ventas"))!);
-        Assert.Empty((await otro.GetFromJsonAsync<List<VentaResumen>>("/api/ventas?empleadoId=1"))!);
-        Assert.Equal(HttpStatusCode.NotFound, (await otro.GetAsync($"/api/ventas/{venta.Id}")).StatusCode);
+        Assert.Contains((await admin.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas"))!.Items, v => v.Id == venta.Id);
+        Assert.Single((await vendedor.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas"))!.Items);
+        Assert.Empty((await otro.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas?empleadoId=1"))!.Items);
+        var primera = (await admin.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas?pagina=1&tamano=1"))!;
+        var segunda = (await admin.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas?pagina=2&tamano=1"))!;
+        Assert.Equal(2, primera.Count);
+        Assert.Single(primera.Items);
+        Assert.Single(segunda.Items);
+        Assert.NotEqual(primera.Items[0].Id, segunda.Items[0].Id);
+        Assert.Equal(HttpStatusCode.Forbidden, (await otro.GetAsync($"/api/ventas/{venta.Id}")).StatusCode);
         var nota = (await vendedor.GetFromJsonAsync<NotaVenta>($"/api/ventas/{venta.Id}"))!;
-        Assert.Equal(venta.Numero, nota.Venta.Numero);
-        Assert.Equal(DateTimeKind.Utc, nota.Venta.Fecha.Kind);
-        Assert.False(string.IsNullOrWhiteSpace(nota.Venta.Vendedor));
-        Assert.Equal("Cliente varios", nota.Venta.Cliente);
+        Assert.Equal(venta.Numero, nota.Numero);
+        Assert.Equal(DateTimeKind.Utc, nota.Fecha.Kind);
+        Assert.False(string.IsNullOrWhiteSpace(nota.Vendedor));
+        Assert.Equal("Cliente varios", nota.Cliente);
         Assert.Equal(2, nota.Lineas.Count);
-        Assert.Equal(27m, nota.Venta.Total);
+        Assert.Equal(27m, nota.Total);
         var json = await vendedor.GetStringAsync($"/api/ventas/{venta.Id}");
         Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("costo", json, StringComparison.OrdinalIgnoreCase);
@@ -102,10 +109,16 @@ public sealed class VentasDia12Tests
         Assert.Equal(HttpStatusCode.Forbidden, (await vendedor.PostAsJsonAsync(ruta, new { motivo = "Devolución" })).StatusCode);
         foreach (var motivo in new[] { " ", new string('x', 301) })
             Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync(ruta, new { motivo })).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync(ruta, new { motivo = "Devolución verificada" })).StatusCode);
+        var anulacion = await admin.PostAsJsonAsync(ruta, new { motivo = "Devolución verificada" });
+        Assert.Equal(HttpStatusCode.OK, anulacion.StatusCode);
+        var resultado = (await anulacion.Content.ReadFromJsonAsync<VentaAnuladaDto>())!;
+        Assert.Equal(venta.Id, resultado.Id);
+        Assert.Equal("Anulada", resultado.Estado);
+        Assert.Equal("Devolución verificada", resultado.Motivo);
+        Assert.Equal(2, resultado.Reposiciones.Count);
         Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsJsonAsync(ruta, new { motivo = "Segundo intento" })).StatusCode);
         await VentasDatosPrueba.ComprobarReposicion(factory.Services, venta.Id, productos);
-        Assert.Equal("Anulada", (await vendedor.GetFromJsonAsync<NotaVenta>($"/api/ventas/{venta.Id}"))!.Venta.Estado);
+        Assert.Equal("Anulada", (await vendedor.GetFromJsonAsync<NotaVenta>($"/api/ventas/{venta.Id}"))!.Estado);
     }
 
     [Fact]
@@ -123,10 +136,12 @@ public sealed class VentasDia12Tests
             (await db.Set<Venta>().SingleAsync(v => v.Id == venta.Id)).Fecha = new DateTime(2026, 11, 20, 4, 59, 59, DateTimeKind.Utc);
             await db.SaveChangesAsync();
         }
-        Assert.Single((await seller.GetFromJsonAsync<List<VentaResumen>>("/api/ventas?desde=2026-11-19&hasta=2026-11-19"))!);
-        Assert.Empty((await seller.GetFromJsonAsync<List<VentaResumen>>("/api/ventas?desde=2026-11-20&hasta=2026-11-20"))!);
+        Assert.Single((await seller.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas?desde=2026-11-19&hasta=2026-11-19"))!.Items);
+        Assert.Empty((await seller.GetFromJsonAsync<Pagina<ResumenVenta>>("/api/ventas?desde=2026-11-20&hasta=2026-11-20"))!.Items);
         Assert.Equal(HttpStatusCode.BadRequest, (await seller.GetAsync("/api/ventas?desde=2026-11-21&hasta=2026-11-20")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await seller.GetAsync("/api/ventas?desde=incorrecto")).StatusCode);
+        foreach (var query in new[] { "hasta=9999-12-31", "desde=2025-01-01&hasta=2026-11-20", "pagina=0", "tamano=101" })
+            Assert.Equal(HttpStatusCode.BadRequest, (await seller.GetAsync("/api/ventas?" + query)).StatusCode);
     }
 
     [Fact]
@@ -156,7 +171,7 @@ public sealed class VentasDia12Tests
             Assert.Equal(0, await db.Set<MovimientoInventario>().CountAsync(m => m.VentaId == venta.Id && m.Tipo == TipoMovimiento.Entrada));
             await db.Database.ExecuteSqlRawAsync("DROP TRIGGER fallo_entrada_venta;");
         }
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync(ruta, new { motivo = "Reintento" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync(ruta, new { motivo = "Reintento" })).StatusCode);
         await VentasDatosPrueba.ComprobarReposicion(factory.Services, venta.Id, productos);
     }
 }

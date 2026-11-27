@@ -13,13 +13,13 @@ import EmpleadosPage from "@/components/EmpleadosPage";
 import PuntoVentaPage from "@/components/PuntoVentaPage";
 import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
-import VentasPage from "@/components/VentasPage";
+import HistorialVentasPage from "@/components/HistorialVentasPage";
 import NotaVentaPage from "@/components/NotaVentaPage";
 
 export type AppView =
+  | "ventas"
   | "historial"
   | "nota"
-  | "ventas"
   | "compras"
   | "inicio"
   | "empleados"
@@ -96,7 +96,7 @@ export default function AppShell({ view }: Props) {
     isAdmin || user.roles.includes("Vendedor");
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
+    <div className="min-h-screen md:grid md:grid-cols-[240px_1fr] print:block">
       <aside className="no-print border-b bg-slate-50 p-6 md:border-b-0 md:border-r">
         <a href="/" className="text-xl font-semibold">
           ImportNet
@@ -114,7 +114,7 @@ export default function AppShell({ view }: Props) {
           <a href="/categorias">Categorías</a>
           <a href="/clientes">Clientes</a>
           <a href="/ventas">Punto de venta</a>
-          <a href="/ventas/historial">Historial de ventas</a>
+          <a href="/historial">Historial de ventas</a>
 
           {puedeLeerStock && (
             <a href="/stock">Stock y alertas</a>
@@ -155,7 +155,7 @@ export default function AppShell({ view }: Props) {
         </div>
       </aside>
 
-      <main className="min-w-0 p-4 md:p-8">
+      <main className="min-w-0 p-4 md:p-8 print:p-0">
         {view === "inicio" && (
           <>
             <h1 className="text-2xl font-semibold">
@@ -179,8 +179,10 @@ export default function AppShell({ view }: Props) {
         )}
 
         {view === "ventas" && <PuntoVentaPage />}
-        {view === "historial" && <VentasPage user={user} />}
-        {view === "nota" && <NotaVentaPage />}
+
+        {view === "historial" && <HistorialVentasPage admin={isAdmin} />}
+
+        {view === "nota" && <NotaVentaPage admin={isAdmin} />}
 
         {view === "empleados" && (
           isAdmin

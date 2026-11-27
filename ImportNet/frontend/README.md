@@ -39,7 +39,7 @@ En Linux o macOS usar npm en lugar de npm.cmd. dist, .astro, node_modules, .env 
 
 - /login inicia sesión con JWT; token, vencimiento y roles se guardan en sessionStorage.
 - /empleados solo para Administrador. El menú se adapta al rol; los permisos reales los impone la API.
-- /ventas conserva el POS; /ventas/historial consulta por fechas; /ventas/nota?id=... permite imprimir la nota.
+- /ventas conserva el POS; /historial consulta por fechas y pagina; /nota?id=... permite imprimir la nota. /ventas/historial y /ventas/nota?id=... son accesos compatibles a esas mismas pantallas.
 - Catálogos, compras, stock y kardex mantienen los permisos de sus endpoints.
 - src/lib/api.ts adjunta Bearer y, al recibir 401, limpia la sesión y redirige a login. Un 403 muestra el error sin cerrar la sesión.
 

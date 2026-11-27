@@ -8,9 +8,9 @@ public interface IUnitOfWork
     IProveedorRepository Proveedores { get; }
     ICategoriaRepository Categorias { get; }
     IProductoRepository Productos { get; }
-    IVentaRepository Ventas { get; }
     IInventarioRepository Inventarios { get; }
     IMovimientoRepository Movimientos { get; }
+    IVentaRepository Ventas { get; }
 
     Task<int> Guardar(CancellationToken ct);
 

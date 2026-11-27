@@ -1,6 +1,6 @@
 ﻿# Estado
 
-Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10–26/11/2026). Estado de la rama local `feat/ventas-dia12`, integrada con main hasta `58d4502`; los nuevos commits de Días 12 y 16 aún no se enviaron a GitHub.
+Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10–26/11/2026). Rama `feat/ventas-dia12`, integrada localmente con main hasta `bc8e338` (PR #19). PR #21 publicado; esta resolución de conflictos todavía requiere push y revisión.
 
 | Día | Fecha | Responsable | Módulo | Estado |
 | --- | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10�
 | 09 | 17/11 | Huber Lope | Ajustes de inventario y kardex | Integrado en main mediante PR #12 |
 | 10 | 18/11 | José Carlos Vitorino | QA intermedio: compras, inventario y roles | Pendiente |
 | 11 | 19/11 | Mauricio Rodríguez | Punto de venta (POS) | Integrado en main mediante PR #9 |
-| 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Implementado y probado localmente; pendiente de push y PR |
+| 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Integrado en main por PR #19; pruebas y mejoras adicionales en PR #21 |
 | 13 | 21/11 | Huber Lope | Reportes con LINQ | Pendiente |
 | 14 | 22/11 | José Carlos Vitorino | Pantallas de reportes y exportación a Excel | Pendiente |
 | 15 | 23/11 | Mauricio Rodríguez | Dashboard con gráficos | Pendiente |
@@ -58,4 +58,4 @@ Incluye historial por propietario y fechas peruanas, nota imprimible, anulación
 
 Verificación local del 27/11: regresión de 152 pruebas aprobadas, 0 fallidas y 4 omitidas, con concurrencia real de anulación en un esquema PostgreSQL temporal. Chrome de ventas pasó por separado. Astro check y build correctos; publish incluye wwwroot y dotnet run sirve frontend y API en un mismo puerto.
 
-No se realizó push ni se abrió un PR. La integración de estos nuevos commits y la ejecución remota de CI siguen pendientes. Los días sin evidencia de cierre en esta revisión conservan su estado anterior; no se afirma que nadie esté trabajando en ellos.
+PR #21 está abierto. Se resolvieron localmente los conflictos con PR #19, conservando sus contratos paginados y sus pantallas, junto a la reposición transaccional y las pruebas adicionales. El push de esta resolución y la ejecución remota de CI siguen pendientes. Los días sin evidencia de cierre en esta revisión conservan su estado anterior; no se afirma que nadie esté trabajando en ellos.

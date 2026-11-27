@@ -43,14 +43,14 @@ try:
             stage = "login y filtro de historial"
             login(page, data["admin"])
             page.get_by_role("link", name="Historial de ventas", exact=True).click()
-            own_row = page.get_by_role("row").filter(has=page.get_by_role("cell", name=str(data["ownNumber"]), exact=True))
+            own_row = page.get_by_role("row").filter(has=page.get_by_role("cell", name=f"NV-{data['ownNumber']:06d}", exact=True))
             expect(own_row).to_be_visible()
             today = datetime.now(timezone(timedelta(hours=-5))).date()
             tomorrow = (today + timedelta(days=1)).isoformat()
             page.get_by_label("Hasta", exact=True).fill(tomorrow)
             page.get_by_label("Desde", exact=True).fill(tomorrow)
             page.get_by_role("button", name="Filtrar", exact=True).click()
-            expect(page.get_by_role("status")).to_have_text("No hay ventas en el periodo seleccionado.")
+            expect(page.get_by_role("status")).to_have_text("No hay ventas en este periodo.")
             page.get_by_label("Desde", exact=True).fill(today.isoformat())
             page.get_by_label("Hasta", exact=True).fill(today.isoformat())
             page.get_by_role("button", name="Filtrar", exact=True).click()
@@ -58,28 +58,28 @@ try:
             stage = "nota y estilos de impresion"
             own_row.get_by_role("link", name="Ver nota", exact=True).click()
             article = page.locator("article")
-            expect(article).to_contain_text(str(data["ownNumber"]).zfill(8))
-            for text in ("Vendedor:", "Prueba API", "Cliente:", "Olla de prueba", "Organizador de prueba", "Total"):
+            expect(article).to_contain_text(f"NV-{data['ownNumber']:06d}")
+            for text in ("Vendedor", "Prueba API", "Cliente", "Olla de prueba", "Organizador de prueba", "Total"):
                 expect(article).to_contain_text(text)
             expect(article.locator("dd").last).to_contain_text("27.00")
             expect(article).to_contain_text(re.compile(rf"0?{today.day}/0?{today.month}/(?:20)?{today.year % 100:02d}"))
             page.emulate_media(media="print")
             expect(page.locator("aside")).to_be_hidden()
-            expect(page.get_by_role("button", name="Imprimir nota", exact=True)).to_be_hidden()
+            expect(page.get_by_role("button", name="Imprimir", exact=True)).to_be_hidden()
             expect(article).to_be_visible()
             page.emulate_media(media="screen")
             stage = "anulacion y rechazo del segundo intento"
-            page.get_by_role("link", name="Volver al historial", exact=True).click()
+            page.get_by_role("link", name="← Historial de ventas", exact=True).click()
             own_row.get_by_role("button", name="Anular", exact=True).click()
-            page.get_by_label("Motivo de anulación", exact=True).fill("Devolucion de prueba de navegador")
+            page.get_by_label("Motivo", exact=True).fill("Devolucion de prueba de navegador")
             with page.expect_response(lambda r: r.request.method == "POST" and f"/api/ventas/{data['ownId']}/anulacion" in r.url) as pending:
-                page.get_by_role("button", name="Confirmar anulación", exact=True).click()
-            assert pending.value.status == 204
+                page.get_by_role("button", name="Anular venta", exact=True).click()
+            assert pending.value.status == 200
             expect(own_row).to_contain_text("Anulada")
             expect(own_row.get_by_role("button", name="Anular", exact=True)).to_have_count(0)
             assert api_status(page, f"/api/ventas/{data['ownId']}/anulacion", "POST", {"motivo": "Segundo intento"}) == 409
             own_row.get_by_role("link", name="Ver nota", exact=True).click()
-            expect(page.locator("article")).to_contain_text("VENTA ANULADA")
+            expect(page.locator("article")).to_contain_text("ANULADA")
             stage = "vendedor y venta ajena"
             seller_context = browser.new_context()
             try:
@@ -89,7 +89,7 @@ try:
                 seller.goto(url + "/ventas/historial", wait_until="domcontentloaded")
                 expect(seller.get_by_role("table").get_by_role("row")).to_have_count(2)
                 expect(seller.get_by_role("button", name="Anular", exact=True)).to_have_count(0)
-                assert api_status(seller, f"/api/ventas/{data['foreignId']}") == 404
+                assert api_status(seller, f"/api/ventas/{data['foreignId']}") == 403
                 assert api_status(seller, f"/api/ventas/{data['ownId']}/anulacion", "POST", {"motivo": "Sin permiso"}) == 403
                 seller.goto(url + f"/ventas/nota?id={data['foreignId']}", wait_until="domcontentloaded")
                 expect(seller.get_by_role("alert")).to_be_visible()

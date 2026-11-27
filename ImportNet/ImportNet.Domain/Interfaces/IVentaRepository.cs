@@ -1,18 +1,23 @@
 using ImportNet.Domain.Entities;
-using ImportNet.Domain.ReadModels;
 
 namespace ImportNet.Domain.Interfaces;
 
 public interface IVentaRepository : IGenericRepository<Venta>
 {
-    Task<IReadOnlyList<VentaResumen>> Historial(
-        DateTime desdeUtc,
-        DateTime hastaUtcExclusivo,
+    /// <summary>
+    /// Ventas más recientes primero. <paramref name="desdeUtc"/> es inclusivo y
+    /// <paramref name="hastaUtc"/> exclusivo. Con <paramref name="empleadoId"/> solo devuelve sus ventas.
+    /// </summary>
+    Task<Pagina<ResumenVenta>> Historial(
+        DateTime? desdeUtc,
+        DateTime? hastaUtc,
         int? empleadoId,
+        int pagina,
+        int tamano,
         CancellationToken ct);
 
-    Task<NotaVenta?> Nota(
-        int id,
-        int? empleadoId,
-        CancellationToken ct);
+    /// <summary>Datos de la nota de venta; null si la venta no existe.</summary>
+    Task<NotaVenta?> Nota(int ventaId, CancellationToken ct);
+
+    Task<IReadOnlyList<DetalleVenta>> Detalles(int ventaId, CancellationToken ct);
 }

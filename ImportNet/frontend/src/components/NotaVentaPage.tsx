@@ -1,71 +1,167 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
 import { api } from "@/lib/api";
-import { fechaHora, moneda } from "@/lib/format";
-import type { NotaVenta } from "@/lib/types";
+import { pen } from "@/lib/compras";
+import { cantidad, fechaHora, numeroVenta, type NotaVenta } from "@/lib/ventas";
+import AnularVentaDialog, { type VentaAAnular } from "@/components/AnularVentaDialog";
 import { Button } from "@/components/ui/button";
 
-export default function NotaVentaPage() {
+function ventaEnUrl(): number | null {
+  const valor = Number(new URLSearchParams(window.location.search).get("id"));
+  return Number.isSafeInteger(valor) && valor > 0 ? valor : null;
+}
+
+interface Props {
+  admin: boolean;
+}
+
+export default function NotaVentaPage({ admin }: Props) {
+  const [ventaId] = useState<number | null>(ventaEnUrl);
   const [nota, setNota] = useState<NotaVenta | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(ventaId === null ? "Indique una venta válida." : "");
+  const [recarga, setRecarga] = useState(0);
+  const [aAnular, setAAnular] = useState<VentaAAnular | null>(null);
 
   useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get("id");
-    const id = Number(value);
-    if (!value || !Number.isSafeInteger(id) || id <= 0) {
-      setError("La nota solicitada no es válida.");
-      return;
-    }
-    const controller = new AbortController();
-    api<NotaVenta>(`/ventas/${id}`, { signal: controller.signal })
-      .then(result => { if (!controller.signal.aborted) setNota(result); })
-      .catch(error => {
-        if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "No se pudo cargar la nota.");
-      });
-    return () => controller.abort();
-  }, []);
+    if (ventaId === null) return;
 
-  if (error) return <section><h1 className="text-2xl font-semibold">Nota de venta</h1><p role="alert" className="mt-4">{error}</p><a className="mt-4 inline-block underline" href="/ventas/historial">Volver al historial</a></section>;
+    const controller = new AbortController();
+    setError("");
+
+    api<NotaVenta>(`/ventas/${ventaId}`, { signal: controller.signal })
+      .then((result) => { if (!controller.signal.aborted) setNota(result); })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return;
+        setNota(null);
+        setError(e instanceof Error ? e.message : "No se pudo cargar la nota de venta.");
+      });
+
+    return () => controller.abort();
+  }, [ventaId, recarga]);
+
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  if (error) {
+    return (
+      <section className="space-y-3">
+        <p role="alert" className="rounded bg-red-50 p-3 text-red-700">{error}</p>
+        <a href="/historial" className="underline">Volver al historial</a>
+      </section>
+    );
+  }
+
   if (!nota) return <p role="status">Cargando nota de venta…</p>;
 
-  const { venta, lineas } = nota;
-  return <section className="nota-venta mx-auto max-w-4xl">
-    <div className="no-print mb-6 flex flex-wrap gap-3">
-      <Button variant="outline" asChild><a href="/ventas/historial">Volver al historial</a></Button>
-      <Button onClick={() => window.print()}>Imprimir nota</Button>
-    </div>
-    <article className="rounded-lg border bg-white p-6 md:p-10">
-      <header className="flex flex-wrap justify-between gap-4 border-b pb-6">
-        <div><h1 className="text-2xl font-semibold">ImportNet</h1><p className="mt-2">Nota de venta</p></div>
-        <div><p className="font-semibold">N.º {String(venta.numero).padStart(8, "0")}</p>
-          <p className="mt-2">{fechaHora(venta.fecha)}</p><p className="mt-2">Estado: {venta.estado}</p></div>
-      </header>
-      <div className="my-6 space-y-2">
-        <p><strong>Vendedor:</strong> {venta.vendedor}</p>
-        <p><strong>Cliente:</strong> {venta.cliente}</p>
-        {venta.documentoCliente && <p><strong>Documento:</strong> {venta.documentoCliente}</p>}
+  const anulada = nota.estado === "Anulada";
+
+  return (
+    <section className="space-y-5">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
+        <a href="/historial" className="underline">← Historial de ventas</a>
+        <div className="flex gap-2">
+          {admin && !anulada && (
+            <Button
+              variant="outline"
+              className="text-red-700"
+              onClick={() => setAAnular({ id: nota.id, numero: nota.numero, total: nota.total })}
+            >
+              Anular venta
+            </Button>
+          )}
+          <Button onClick={() => window.print()}>Imprimir</Button>
+        </div>
       </div>
-      {venta.estado === "Anulada" && <div className="mb-6 border border-red-400 p-4 text-red-800">
-        <p className="font-semibold">VENTA ANULADA</p><p className="mt-1">{venta.motivoAnulacion}</p>
-      </div>}
-      <div className="overflow-x-auto"><table className="w-full border-collapse text-left text-sm">
-        <caption className="sr-only">Detalle de la venta {venta.numero}</caption>
-        <thead><tr className="border-b">
-          <th scope="col" className="py-3 pr-3">Producto</th><th scope="col" className="py-3 pr-3">Cantidad</th>
-          <th scope="col" className="py-3 pr-3">Precio</th><th scope="col" className="py-3 pr-3">Descuento</th><th scope="col" className="py-3 text-right">Subtotal</th>
-        </tr></thead>
-        <tbody>{lineas.map((linea, index) => <tr key={`${linea.codigo}-${index}`} className="border-b">
-          <td className="py-3 pr-3"><p>{linea.producto}</p><p className="text-xs text-slate-500">{linea.codigo}</p></td>
-          <td className="py-3 pr-3">{linea.cantidad} {linea.unidadMedida}</td>
-          <td className="py-3 pr-3">{moneda(linea.precioUnitario)}</td><td className="py-3 pr-3">{moneda(linea.descuento)}</td>
-          <td className="py-3 text-right">{moneda(linea.subtotal)}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <dl className="ml-auto mt-8 grid max-w-xs grid-cols-2 gap-3">
-        <dt>Subtotal</dt><dd className="text-right">{moneda(venta.subtotal)}</dd>
-        <dt>Descuento</dt><dd className="text-right">{moneda(venta.descuento)}</dd>
-        <dt className="text-lg font-semibold">Total</dt><dd className="text-right text-lg font-semibold">{moneda(venta.total)}</dd>
-      </dl>
-      <p className="mt-10 text-xs text-slate-600">Documento interno de venta. No constituye comprobante electrónico SUNAT.</p>
-    </article>
-  </section>;
+
+      <article className="nota-venta relative mx-auto max-w-2xl rounded border bg-white p-6 print:max-w-none print:border-0 print:p-0">
+        {anulada && (
+          <p className="mb-4 rounded border-2 border-red-700 p-3 text-center font-semibold text-red-700">
+            ANULADA{nota.fechaAnulacion && ` el ${fechaHora.format(new Date(nota.fechaAnulacion))}`}
+            {nota.motivoAnulacion && <span className="block font-normal">Motivo: {nota.motivoAnulacion}</span>}
+          </p>
+        )}
+
+        <header className="flex flex-wrap justify-between gap-4 border-b pb-4">
+          <div>
+            <p className="text-xl font-semibold">ImportNet</p>
+            <p className="text-sm text-slate-600">Nota de venta · No es comprobante electrónico SUNAT</p>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-semibold">{numeroVenta(nota.numero)}</p>
+            <p className="text-sm">{fechaHora.format(new Date(nota.fecha))}</p>
+          </div>
+        </header>
+
+        <dl className="grid gap-2 py-4 sm:grid-cols-2">
+          <div>
+            <dt className="text-sm text-slate-600">Cliente</dt>
+            <dd className="font-medium">{nota.cliente}</dd>
+            {nota.clienteDocumento && (
+              <dd className="text-sm">{nota.clienteTipoDocumento} {nota.clienteDocumento}</dd>
+            )}
+          </div>
+          <div>
+            <dt className="text-sm text-slate-600">Vendedor</dt>
+            <dd className="font-medium">{nota.vendedor}</dd>
+          </div>
+        </dl>
+
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Líneas de la venta</caption>
+          <thead className="border-y">
+            <tr>
+              <th scope="col" className="py-2 pr-2">Producto</th>
+              <th scope="col" className="py-2 pr-2 text-right">Cant.</th>
+              <th scope="col" className="py-2 pr-2 text-right">P. unit.</th>
+              <th scope="col" className="py-2 pr-2 text-right">Dscto.</th>
+              <th scope="col" className="py-2 text-right">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            {nota.lineas.map((l) => (
+              <tr key={l.productoId} className="border-b">
+                <td className="py-2 pr-2">
+                  <span className="block">{l.producto}</span>
+                  <span className="text-slate-600">{l.codigo}</span>
+                </td>
+                <td className="whitespace-nowrap py-2 pr-2 text-right">
+                  {cantidad.format(l.cantidad)} {l.unidadMedida}
+                </td>
+                <td className="py-2 pr-2 text-right">{pen(l.precioUnitario)}</td>
+                <td className="py-2 pr-2 text-right">{l.descuento ? pen(l.descuento) : ""}</td>
+                <td className="py-2 text-right">{pen(l.subtotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <dl className="ml-auto mt-4 w-full max-w-60 space-y-1">
+          <div className="flex justify-between">
+            <dt>Subtotal</dt>
+            <dd>{pen(nota.subtotal)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt>Descuento</dt>
+            <dd>−{pen(nota.descuento)}</dd>
+          </div>
+          <div className="flex justify-between border-t pt-1 text-lg font-semibold">
+            <dt>Total</dt>
+            <dd className={anulada ? "line-through" : undefined}>{pen(nota.total)}</dd>
+          </div>
+        </dl>
+
+        <p className="mt-6 text-center text-sm text-slate-600">Gracias por su compra.</p>
+      </article>
+
+      {admin && (
+        <AnularVentaDialog
+          venta={aAnular}
+          onCerrar={() => setAAnular(null)}
+          onAnulada={() => {
+            setAAnular(null);
+            recargar();
+          }}
+        />
+      )}
+    </section>
+  );
 }

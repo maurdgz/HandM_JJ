@@ -4,6 +4,7 @@ using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+
 namespace ImportNet.Infrastructure.Repositories;
 
 internal sealed class UnitOfWork : IUnitOfWork
@@ -18,9 +19,9 @@ internal sealed class UnitOfWork : IUnitOfWork
         Terceros = new TercerosRepository(context);
         Categorias = new CategoriaRepository(context);
         Productos = new ProductoRepository(context);
-        Ventas = new VentaRepository(context);
         Inventarios = new InventarioRepository(context);
         Movimientos = new MovimientoRepository(context);
+        Ventas = new VentaRepository(context);
     }
 
     public ICompraRepository Compras { get; }
@@ -29,9 +30,9 @@ internal sealed class UnitOfWork : IUnitOfWork
     public IProveedorRepository Proveedores => Terceros;
     public ICategoriaRepository Categorias { get; }
     public IProductoRepository Productos { get; }
-    public IVentaRepository Ventas { get; }
     public IInventarioRepository Inventarios { get; }
     public IMovimientoRepository Movimientos { get; }
+    public IVentaRepository Ventas { get; }
 
     public async Task<int> Guardar(CancellationToken ct)
     {
