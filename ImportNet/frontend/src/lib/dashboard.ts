@@ -43,7 +43,7 @@ export const obtenerResumen = (signal: AbortSignal) => api<ResumenDashboard>("/r
 export const obtenerMiResumen = (signal: AbortSignal) => api<MiResumen>("/reportes/mi-resumen", { signal });
 
 export async function obtenerGraficos(periodo: PeriodoDashboard, signal: AbortSignal): Promise<GraficosDashboard> {
-  const parametros = new URLSearchParams(periodo).toString();
+  const parametros = new URLSearchParams({ desde: periodo.desde, hasta: periodo.hasta }).toString();
   const [meses, productos, vendedores] = await Promise.all([
     api<VentasPeriodo[]>(`/reportes/ventas-por-periodo?${parametros}&agrupacion=Mes`, { signal }),
     api<TopProducto[]>(`/reportes/top-productos?${parametros}&top=5`, { signal }),
