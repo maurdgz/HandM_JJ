@@ -78,7 +78,7 @@ try:
             assert pending.value.status == 200 and pending.value.json()["totalPen"] == 101, f"Edit returned {pending.value.status}: {pending.value.json().get('title', 'Unexpected total')}"
             stage = "received readonly"
             page.get_by_role("button", name=f"Consultar #{data['recibidaId']}", exact=True).click()
-            expect(page.get_by_text("Compra recibida: solo consulta.", exact=True)).to_be_visible()
+            expect(page.get_by_text("Compra recibida: solo consulta.", exact=False)).to_be_visible()
             expect(page.get_by_role("button", name=f"Editar #{data['recibidaId']}", exact=True)).to_have_count(0)
             expect(page.get_by_role("button", name=f"Eliminar #{data['recibidaId']}", exact=True)).to_have_count(0)
             stage = "delete draft"

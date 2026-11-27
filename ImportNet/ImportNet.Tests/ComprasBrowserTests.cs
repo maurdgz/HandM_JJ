@@ -8,10 +8,10 @@ using Xunit;
 namespace ImportNet.Tests;
 public sealed class ComprasBrowserTests
 {
-    [BrowserFact, Trait("Browser", "Chrome")]
+    [BrowserFact, Trait("Browser", "Chrome"), Trait("Database", "PostgreSQL")]
     public async Task Astro_LoginCrudRecibidaRolesY401()
     {
-        using var factory = new SmokeFactory(useKestrel: true); using var client = TestSupport.CreateKestrelClient(factory); factory.InitializeSchema();
+        using var factory = new DashboardPostgreSqlFactory(); using var client = TestSupport.CreateKestrelClient(factory);
         var admin = await AuthApiTests.CrearUsuario(factory, "Administrador"); var seller = await AuthApiTests.CrearUsuario(factory, "Vendedor");
         var datos = await ComprasApiTests.Preparar(factory); int recibidaId;
         using (var scope = factory.Services.CreateScope())
