@@ -43,4 +43,18 @@ public sealed class VentasController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Nota(int id, CancellationToken ct)
         => Ok(await mediator.Send(new ObtenerNotaVentaQuery(id), ct));
+
+    /// <summary>Anula una venta Registrada y repone su stock una sola vez. Solo Administrador.</summary>
+    [HttpPost("{id:int}/anulacion")]
+    [Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(VentaAnuladaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Anular(int id, AnularVentaBody body, CancellationToken ct)
+        => Ok(await mediator.Send(new AnularVentaCommand(id, body.Motivo), ct));
 }
+
+public sealed record AnularVentaBody(string Motivo);

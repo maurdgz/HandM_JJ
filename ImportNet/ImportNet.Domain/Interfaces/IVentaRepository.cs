@@ -18,4 +18,9 @@ public interface IVentaRepository
 
     /// <summary>Datos de la nota de venta; null si la venta no existe.</summary>
     Task<NotaVenta?> Nota(int ventaId, CancellationToken ct);
+
+    /// <summary>Venta con seguimiento de cambios, para anularla.</summary>
+    Task<Venta?> Obtener(int ventaId, CancellationToken ct);
+
+    Task<IReadOnlyList<DetalleVenta>> Detalles(int ventaId, CancellationToken ct);
 }

@@ -134,4 +134,14 @@ internal sealed class VentaRepository(AppDbContext db) : IVentaRepository
             cabecera.FechaAnulacion,
             lineas);
     }
+
+    public Task<Venta?> Obtener(int ventaId, CancellationToken ct)
+        => db.Set<Venta>().SingleOrDefaultAsync(x => x.Id == ventaId, ct);
+
+    public async Task<IReadOnlyList<DetalleVenta>> Detalles(int ventaId, CancellationToken ct)
+        => await db.Set<DetalleVenta>()
+            .AsNoTracking()
+            .Where(x => x.VentaId == ventaId)
+            .OrderBy(x => x.Id)
+            .ToListAsync(ct);
 }
