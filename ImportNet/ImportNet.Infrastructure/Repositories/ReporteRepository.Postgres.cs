@@ -15,12 +15,16 @@ internal sealed partial class ReporteRepository
 
     private async Task<IReadOnlyList<TopProducto>> TopProductosPostgres(
         DateTime desdeUtc, DateTime hastaUtc, int top, CancellationToken ct)
-        => await LineasProductosPostgres(desdeUtc, hastaUtc)
+    {
+        var filas = await LineasProductosPostgres(desdeUtc, hastaUtc)
             .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.UnidadMedida })
-            .Select(g => new TopProducto(g.Key.ProductoId, g.Key.Codigo, g.Key.Nombre, g.Key.UnidadMedida,
-                g.Sum(x => x.Cantidad), g.Sum(x => x.Subtotal)))
+            .Select(g => new { g.Key.ProductoId, g.Key.Codigo, g.Key.Nombre, g.Key.UnidadMedida,
+                Cantidad = g.Sum(x => x.Cantidad), Total = g.Sum(x => x.Subtotal) })
             .OrderByDescending(x => x.Cantidad).ThenByDescending(x => x.Total).ThenBy(x => x.ProductoId)
             .Take(top).ToListAsync(ct);
+        return filas.Select(x => new TopProducto(x.ProductoId, x.Codigo, x.Nombre, x.UnidadMedida,
+            x.Cantidad, x.Total)).ToArray();
+    }
 
     private async Task<IReadOnlyList<MargenProducto>> MargenPorProductoPostgres(
         DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
