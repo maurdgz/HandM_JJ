@@ -52,7 +52,7 @@ Chrome opcional, con Chrome local, Python y Playwright instalados, después de p
 
 ```powershell
 $env:IMPORTNET_BROWSER_TESTS = '1'
-dotnet test ImportNet.sln --configuration Release --filter 'FullyQualifiedName~VentasBrowserTests'
+dotnet test ImportNet.sln --configuration Release --filter 'FullyQualifiedName~VentasBrowserTests|FullyQualifiedName~FrontendBrowserTests'
 Remove-Item Env:IMPORTNET_BROWSER_TESTS
 ```
 
@@ -60,8 +60,8 @@ La prueba usa Kestrel, SQLite temporal y cuentas sintéticas, sin utilizar cuent
 
 Evidencia local de esta entrega:
 
-- Regresión sin navegador: 152 aprobadas, 0 fallidas, 4 omitidas; incluye concurrencia de anulación en PostgreSQL.
-- Chrome de ventas: 1 aprobada. Seguridad HTTP comprobada con entradas nulas, incompletas y JSON inválido.
+- Regresión sin navegador después de PR #20: 154 aprobadas, 0 fallidas, 4 omitidas; incluye concurrencia de anulación y migración IndicesReportes en PostgreSQL temporal.
+- Chrome: 2 aprobadas (ventas y Empleados). Seguridad HTTP comprobada con entradas nulas, incompletas y JSON inválido; reportes sin ventas anuladas y resumen propio del Vendedor. Las dos pruebas antiguas de navegador (Swagger y compras) no forman parte de esta ejecución.
 - Astro check: 0 errores, 0 warnings y 10 hints de deprecaciones existentes; build integrado: 15 páginas. .NET conserva dos avisos xUnit2031 preexistentes en pruebas de recepción.
 - Publish incluye inicio, login, historial, nota y recursos de Astro.
 - dotnet run en un puerto temporal respondió 200 para páginas y 401 para /api/ventas anónimo; el proceso de comprobación se detuvo al terminar.
@@ -70,3 +70,7 @@ Evidencia local de esta entrega:
 CI prepara Astro, compila .NET, ejecuta la suite con PostgreSQL de prueba y verifica publish. La ejecución remota de CI queda pendiente del push y PR del equipo; esta entrega deja commits locales.
 
 La nota puede imprimirse o guardarse como PDF desde el navegador; no se añadió un generador PDF en el servidor. Reportes, dashboard, seed de demostración y QA de cierre conservan su alcance y responsables en el plan.
+
+## Integración con las actualizaciones del equipo
+
+Se incorpora main hasta cc501e3 (PR #19 de ventas y PR #20 de reportes) y el commit original del PR #8 de Empleados. Los detalles de resolución y la matriz de pendientes están en [Integración de la entrega](INTEGRACION-VENTAS-SEGURIDAD.md).
