@@ -10,7 +10,7 @@ namespace ImportNet.Infrastructure.Repositories;
 /// en el servidor, así que GroupBy/Sum/OrderByDescending/Take se aplican sobre las filas proyectadas,
 /// igual que el saldo del kardex.
 /// </remarks>
-internal sealed class ReporteRepository(AppDbContext db) : IReporteRepository
+internal sealed partial class ReporteRepository(AppDbContext db) : IReporteRepository
 {
     // Perú no usa horario de verano.
     private static readonly TimeSpan HoraPeru = TimeSpan.FromHours(-5);
@@ -28,6 +28,9 @@ internal sealed class ReporteRepository(AppDbContext db) : IReporteRepository
         AgrupacionPeriodo agrupacion,
         CancellationToken ct)
     {
+        if (db.Database.IsNpgsql())
+            return await VentasPorPeriodoPostgres(desdeUtc, hastaUtc, agrupacion, ct);
+
         var filas = await VentasRegistradas(desdeUtc, hastaUtc)
             .Select(x => new { x.Fecha, x.Total })
             .ToListAsync(ct);
@@ -46,6 +49,9 @@ internal sealed class ReporteRepository(AppDbContext db) : IReporteRepository
         DateTime hastaUtc,
         CancellationToken ct)
     {
+        if (db.Database.IsNpgsql())
+            return await VentasPorVendedorPostgres(desdeUtc, hastaUtc, ct);
+
         var filas = await (
             from venta in VentasRegistradas(desdeUtc, hastaUtc)
             join empleado in db.Set<Empleado>().AsNoTracking()
