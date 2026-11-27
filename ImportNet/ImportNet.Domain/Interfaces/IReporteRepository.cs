@@ -31,4 +31,20 @@ public interface IReporteRepository
         DateTime desdeUtc,
         DateTime hastaUtc,
         CancellationToken ct);
+
+    /// <summary>Productos activos con stock menor o igual al mínimo, por mayor faltante.</summary>
+    Task<IReadOnlyList<ProductoStockBajo>> StockBajoMinimo(CancellationToken ct);
+
+    /// <summary>Con <paramref name="empleadoId"/> solo considera las ventas de ese empleado.</summary>
+    Task<CierreCaja> CierreCaja(
+        DateOnly fecha,
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int? empleadoId,
+        CancellationToken ct);
+
+    Task<IReadOnlyList<ComprasPorProveedor>> ComprasPorProveedor(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct);
 }

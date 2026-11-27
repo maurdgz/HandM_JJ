@@ -155,6 +155,136 @@ internal sealed class ReporteRepository(AppDbContext db) : IReporteRepository
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<ProductoStockBajo>> StockBajoMinimo(CancellationToken ct)
+    {
+        var filas = await (
+            from producto in db.Set<Producto>().AsNoTracking()
+            join inventario in db.Set<Inventario>().AsNoTracking()
+                    .Where(x => x.AlmacenId == Almacen.PrincipalId)
+                on producto.Id equals inventario.ProductoId into existencias
+            from inventario in existencias.DefaultIfEmpty()
+            where producto.Activo
+            select new
+            {
+                producto.Id,
+                producto.Codigo,
+                producto.Nombre,
+                producto.UnidadMedida,
+                producto.StockMinimo,
+                Stock = inventario == null ? 0m : inventario.Cantidad
+            })
+            .Where(x => x.Stock <= x.StockMinimo)
+            .ToListAsync(ct);
+
+        return filas
+            .Select(x => new ProductoStockBajo(
+                x.Id,
+                x.Codigo,
+                x.Nombre,
+                x.UnidadMedida,
+                x.Stock,
+                x.StockMinimo,
+                x.StockMinimo - x.Stock))
+            .OrderByDescending(x => x.Faltante)
+            .ThenBy(x => x.Nombre, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    public async Task<CierreCaja> CierreCaja(
+        DateOnly fecha,
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int? empleadoId,
+        CancellationToken ct)
+    {
+        var ventas = db.Set<Venta>()
+            .AsNoTracking()
+            .Where(x => x.Fecha >= desdeUtc && x.Fecha < hastaUtc);
+
+        if (empleadoId is { } empleado)
+            ventas = ventas.Where(x => x.EmpleadoId == empleado);
+
+        var filas = await (
+            from venta in ventas
+            join vendedor in db.Set<Empleado>().AsNoTracking()
+                on venta.EmpleadoId equals vendedor.Id
+            select new
+            {
+                venta.Estado,
+                venta.EmpleadoId,
+                Vendedor = vendedor.Nombre + " " + vendedor.Apellidos,
+                venta.Subtotal,
+                venta.Descuento,
+                venta.Total
+            })
+            .ToListAsync(ct);
+
+        var registradas = filas.Where(x => x.Estado == EstadoVenta.Registrada).ToArray();
+        var anuladas = filas.Where(x => x.Estado == EstadoVenta.Anulada).ToArray();
+
+        var porVendedor = registradas
+            .GroupBy(x => new { x.EmpleadoId, x.Vendedor })
+            .Select(g => new CierreVendedor(
+                g.Key.EmpleadoId,
+                g.Key.Vendedor.Trim(),
+                g.Count(),
+                g.Sum(x => x.Total)))
+            .OrderByDescending(x => x.Total)
+            .ThenBy(x => x.Vendedor, StringComparer.Ordinal)
+            .ToArray();
+
+        return new CierreCaja(
+            fecha,
+            registradas.Length,
+            registradas.Sum(x => x.Subtotal),
+            registradas.Sum(x => x.Descuento),
+            registradas.Sum(x => x.Total),
+            anuladas.Length,
+            anuladas.Sum(x => x.Total),
+            porVendedor);
+    }
+
+    public async Task<IReadOnlyList<ComprasPorProveedor>> ComprasPorProveedor(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct)
+    {
+        var lineas = await (
+            from compra in db.Set<Compra>().AsNoTracking()
+            join proveedor in db.Set<Proveedor>().AsNoTracking()
+                on compra.ProveedorId equals proveedor.Id
+            from linea in compra.Lineas
+            where compra.Estado == EstadoCompra.Recibida
+                && compra.Fecha >= desdeUtc
+                && compra.Fecha < hastaUtc
+            select new
+            {
+                CompraId = compra.Id,
+                compra.ProveedorId,
+                Proveedor = proveedor.Nombre,
+                proveedor.Pais,
+                linea.Cantidad,
+                linea.CostoUnitarioUsd,
+                linea.MercaderiaPen,
+                linea.FletePen,
+                linea.AduanaPen
+            })
+            .ToListAsync(ct);
+
+        return lineas
+            .GroupBy(x => new { x.ProveedorId, x.Proveedor, x.Pais })
+            .Select(g => new ComprasPorProveedor(
+                g.Key.ProveedorId,
+                g.Key.Proveedor,
+                g.Key.Pais,
+                g.Select(x => x.CompraId).Distinct().Count(),
+                decimal.Round(g.Sum(x => x.Cantidad * x.CostoUnitarioUsd), 2, MidpointRounding.AwayFromZero),
+                g.Sum(x => x.MercaderiaPen + x.FletePen + x.AduanaPen)))
+            .OrderByDescending(x => x.TotalPen)
+            .ThenBy(x => x.Proveedor, StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private sealed record LineaVendida(
         int ProductoId,
         string Codigo,
