@@ -7,21 +7,13 @@ namespace ImportNet.Application.UseCases.Reportes;
 
 public sealed record MargenPorProductoQuery(DateOnly? Desde = null, DateOnly? Hasta = null) : IRequest<List<MargenProducto>>;
 
-internal sealed class MargenPorProductoQueryHandler : IRequestHandler<MargenPorProductoQuery, List<MargenProducto>>
+internal sealed class MargenPorProductoQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
+    : IRequestHandler<MargenPorProductoQuery, List<MargenProducto>>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUsuarioActual _actor;
-
-    public MargenPorProductoQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
-    {
-        _unitOfWork = unitOfWork;
-        _actor = actor;
-    }
-
     public async Task<List<MargenProducto>> Handle(MargenPorProductoQuery request, CancellationToken cancellationToken)
     {
-        await _actor.ExigirAdministrador(cancellationToken);
+        await actor.ExigirAdministradorAsync(cancellationToken);
         var periodo = PeriodoReporte.Desde(request.Desde, request.Hasta);
-        return await _unitOfWork.Reportes.MargenPorProducto(periodo.DesdeUtc, periodo.HastaUtc, cancellationToken);
+        return await unitOfWork.Reportes.MargenPorProductoAsync(periodo.DesdeUtc, periodo.HastaUtc, cancellationToken);
     }
 }

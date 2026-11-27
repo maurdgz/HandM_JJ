@@ -7,24 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Identity;
 
-internal sealed class UsuarioActual : IUsuarioActual
+internal sealed class UsuarioActual(
+    IHttpContextAccessor httpContext,
+    AppDbContext context,
+    UserManager<ApplicationUser> users) : IUsuarioActual
 {
-    private readonly IHttpContextAccessor _httpContext;
-    private readonly AppDbContext _context;
-    private readonly UserManager<ApplicationUser> _users;
-
-    public UsuarioActual(IHttpContextAccessor httpContext, AppDbContext context, UserManager<ApplicationUser> users)
-    {
-        _httpContext = httpContext;
-        _context = context;
-        _users = users;
-    }
-
     public string? Id
     {
         get
         {
-            var user = _httpContext.HttpContext?.User;
+            var user = httpContext.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated != true)
                 return null;
 
@@ -32,25 +24,28 @@ internal sealed class UsuarioActual : IUsuarioActual
         }
     }
 
-    public async Task ExigirAdministrador(CancellationToken ct)
+    public async Task ExigirAdministradorAsync(CancellationToken ct = default)
     {
         if (Id == null)
             throw new AccesoNoPermitidoException(401);
 
-        if (!await EsAdministrador(ct))
+        if (!await EsAdministradorAsync(ct))
             throw new AccesoNoPermitidoException(403);
     }
 
-    public async Task<bool> EsAdministrador(CancellationToken ct)
+    public async Task<bool> EsAdministradorAsync(CancellationToken ct = default)
     {
         if (Id == null)
             return false;
 
-        var empleado = await _context.Set<Empleado>().AsNoTracking().FirstOrDefaultAsync(e => e.UsuarioId == Id, ct);
+        var empleado = await context.Set<Empleado>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.UsuarioId == Id, ct);
+
         if (empleado == null || !empleado.Activo)
             return false;
 
-        var user = await _users.FindByIdAsync(Id);
-        return user != null && await _users.IsInRoleAsync(user, RolesImportNet.Administrador);
+        var user = await users.FindByIdAsync(Id);
+        return user != null && await users.IsInRoleAsync(user, RolesImportNet.Administrador);
     }
 }

@@ -38,3 +38,15 @@ export interface EmpleadoDto {
   activo: boolean;
   roles: Rol[];
 }
+
+export interface AnalisisIaDto {
+  desde: string;
+  hasta: string;
+  resumenEjecutivo: string;
+  recomendaciones: string[];
+  alertasPrioritarias: string[];
+  respuestaPregunta: string | null;
+  proveedorIa: string;
+  modelo: string;
+  generadoEnUtc: string;
+}

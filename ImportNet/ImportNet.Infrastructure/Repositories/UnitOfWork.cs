@@ -1,5 +1,5 @@
 using System.Data;
-using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -7,35 +7,32 @@ using Npgsql;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class UnitOfWork : IUnitOfWork
+internal sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
 {
-    private readonly AppDbContext _context;
+    private readonly AppDbContext _context = context;
+    private ICompraRepository? _compras;
+    private IClienteRepository? _clientes;
+    private IProveedorRepository? _proveedores;
+    private ICategoriaRepository? _categorias;
+    private IProductoRepository? _productos;
+    private IInventarioRepository? _inventarios;
+    private IMovimientoRepository? _movimientos;
+    private IReporteRepository? _reportes;
+    private IVentaRepository? _ventas;
+    private IEmpleadoRepository? _empleados;
 
-    public UnitOfWork(AppDbContext context)
-    {
-        _context = context;
-        Compras = new CompraRepository(context);
-        Clientes = new ClienteRepository(context);
-        Proveedores = new ProveedorRepository(context);
-        Categorias = new CategoriaRepository(context);
-        Productos = new ProductoRepository(context);
-        Inventarios = new InventarioRepository(context);
-        Movimientos = new MovimientoRepository(context);
-        Reportes = new ReporteRepository(context);
-        Ventas = new VentaRepository(context);
-    }
+    public ICompraRepository Compras => _compras ??= new CompraRepository(_context);
+    public IClienteRepository Clientes => _clientes ??= new ClienteRepository(_context);
+    public IProveedorRepository Proveedores => _proveedores ??= new ProveedorRepository(_context);
+    public ICategoriaRepository Categorias => _categorias ??= new CategoriaRepository(_context);
+    public IProductoRepository Productos => _productos ??= new ProductoRepository(_context);
+    public IInventarioRepository Inventarios => _inventarios ??= new InventarioRepository(_context);
+    public IMovimientoRepository Movimientos => _movimientos ??= new MovimientoRepository(_context);
+    public IReporteRepository Reportes => _reportes ??= new ReporteRepository(_context);
+    public IVentaRepository Ventas => _ventas ??= new VentaRepository(_context);
+    public IEmpleadoRepository Empleados => _empleados ??= new EmpleadoRepository(_context);
 
-    public ICompraRepository Compras { get; }
-    public IClienteRepository Clientes { get; }
-    public IProveedorRepository Proveedores { get; }
-    public ICategoriaRepository Categorias { get; }
-    public IProductoRepository Productos { get; }
-    public IInventarioRepository Inventarios { get; }
-    public IMovimientoRepository Movimientos { get; }
-    public IReporteRepository Reportes { get; }
-    public IVentaRepository Ventas { get; }
-
-    public async Task<int> Guardar(CancellationToken ct)
+    public async Task<int> GuardarAsync(CancellationToken ct = default)
     {
         try
         {
@@ -51,32 +48,54 @@ internal sealed class UnitOfWork : IUnitOfWork
         }
     }
 
-    public async Task<T> EjecutarEnTransaccion<T>(Func<CancellationToken, Task<T>> operacion, CancellationToken ct)
+    public async Task<T> EjecutarEnTransaccionAsync<T>(Func<CancellationToken, Task<T>> operacion, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(operacion);
+
+        if (_context.Database.CurrentTransaction is not null)
+            throw new ConflictoException("Ya existe una transacción activa en esta unidad de trabajo.");
+
         await using var transaccion = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
         try
         {
             var resultado = await operacion(ct);
-            await Guardar(ct);
+            await GuardarAsync(ct);
             await transaccion.CommitAsync(ct);
             return resultado;
         }
-        catch (Exception ex) when (EsConflictoDeSerializacion(ex))
+        catch (Exception ex)
         {
+            try
+            {
+                await transaccion.RollbackAsync(CancellationToken.None);
+            }
+            catch
+            {
+                // Ignorar fallo secundario al revertir transacción abortada
+            }
+
             _context.ChangeTracker.Clear();
-            throw new ConflictoException("Otra operación modificó los mismos datos. Recargue y vuelva a intentarlo.");
-        }
-        catch
-        {
-            _context.ChangeTracker.Clear();
+
+            if (EsConflictoDeConcurrencia(ex))
+                throw new ConflictoException("Otra operación modificó los mismos datos. Recargue y vuelva a intentarlo.");
+
             throw;
         }
     }
 
-    private static bool EsConflictoDeSerializacion(Exception ex)
+    public void Dispose() => _context.Dispose();
+
+    public ValueTask DisposeAsync() => _context.DisposeAsync();
+
+    private static bool EsConflictoDeConcurrencia(Exception error)
     {
-        var postgres = ex as PostgresException ?? ex.InnerException as PostgresException;
-        return postgres != null && (postgres.SqlState == "40001" || postgres.SqlState == "40P01");
+        if (error is DbUpdateConcurrencyException)
+            return true;
+
+        if (error is PostgresException { SqlState: "40001" or "40P01" or "23505" or "23503" })
+            return true;
+
+        return error.InnerException is { } interna && EsConflictoDeConcurrencia(interna);
     }
 }

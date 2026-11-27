@@ -1,3 +1,5 @@
+using ImportNet.Domain.Exceptions;
+
 namespace ImportNet.Domain.Entities;
 
 public static class CalculadoraCostoPromedio

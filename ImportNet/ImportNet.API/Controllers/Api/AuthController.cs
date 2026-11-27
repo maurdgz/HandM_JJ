@@ -1,4 +1,5 @@
 using ImportNet.API.Configuration;
+using ImportNet.Application.Security;
 using ImportNet.Application.UseCases.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -10,27 +11,20 @@ namespace ImportNet.API.Controllers.Api;
 [ApiController]
 [Route("api/auth")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public class AuthController : ControllerBase
+public sealed class AuthController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public AuthController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
-    [HttpPost("login")]
-    [AllowAnonymous]
+    [HttpPost("login"), AllowAnonymous]
     [EnableRateLimiting(LoginRateLimiting.Policy)]
+    [ProducesResponseType(typeof(TokenDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login(LoginQuery query, CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(query, ct));
-    }
+        => Ok(await mediator.Send(query, ct));
 
-    [HttpGet("me")]
-    [Authorize]
+    [HttpGet("me"), Authorize]
+    [ProducesResponseType(typeof(UsuarioDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me(CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(new GetUsuarioActualQuery(), ct));
-    }
+        => Ok(await mediator.Send(new GetUsuarioActualQuery(), ct));
 }

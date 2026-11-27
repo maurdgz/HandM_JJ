@@ -1,4 +1,4 @@
-using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using MediatR;
 
 namespace ImportNet.Application.UseCases.Reportes;
@@ -21,28 +21,24 @@ public sealed record ObtenerTablaReporteQuery(
     int Top,
     DateOnly? Fecha) : IRequest<TablaReporte>;
 
-internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerTablaReporteQuery, TablaReporte>
+internal sealed class ObtenerTablaReporteQueryHandler(IMediator mediator)
+    : IRequestHandler<ObtenerTablaReporteQuery, TablaReporte>
 {
-    private readonly IMediator mediator;
-
-    public ObtenerTablaReporteQueryHandler(IMediator mediator)
-    {
-        this.mediator = mediator;
-    }
+    private readonly IMediator _mediator = mediator;
 
     public Task<TablaReporte> Handle(ObtenerTablaReporteQuery r, CancellationToken ct) => r.Reporte switch
     {
-        "ventas-por-periodo" => VentasPorPeriodo(r, ct),
-        "ventas-por-vendedor" => VentasPorVendedor(r, ct),
-        "top-productos" => TopProductos(r, ct),
-        "margen-productos" => MargenProductos(r, ct),
-        "stock-bajo" => StockBajo(ct),
-        "cierre-caja" => CierreCaja(r.Fecha, ct),
-        "compras-por-proveedor" => ComprasPorProveedor(r, ct),
+        "ventas-por-periodo" => VentasPorPeriodoAsync(r, ct),
+        "ventas-por-vendedor" => VentasPorVendedorAsync(r, ct),
+        "top-productos" => TopProductosAsync(r, ct),
+        "margen-productos" => MargenProductosAsync(r, ct),
+        "stock-bajo" => StockBajoAsync(ct),
+        "cierre-caja" => CierreCajaAsync(r.Fecha, ct),
+        "compras-por-proveedor" => ComprasPorProveedorAsync(r, ct),
         _ => throw new NoEncontradoException("Reporte no encontrado.")
     };
 
-    private async Task<TablaReporte> VentasPorPeriodo(ObtenerTablaReporteQuery r, CancellationToken ct)
+    private async Task<TablaReporte> VentasPorPeriodoAsync(ObtenerTablaReporteQuery r, CancellationToken ct)
     {
         var agrupacion = r.Agrupacion.ToLowerInvariant() switch
         {
@@ -51,7 +47,7 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             _ => throw new ReglaNegocioException("La agrupación debe ser Dia o Mes.")
         };
         var (desde, hasta) = PeriodoReporte.Fechas(r.Desde, r.Hasta, agrupacion == "Mes" ? 1100 : 366);
-        var datos = await mediator.Send(new VentasPorPeriodoQuery(desde, hasta, agrupacion), ct);
+        var datos = await _mediator.Send(new VentasPorPeriodoQuery(desde, hasta, agrupacion), ct);
         var agrupadoPor = agrupacion == "Mes" ? "mes" : "día";
         return new("Ventas por periodo", $"{Rango(desde, hasta)} · Agrupación por {agrupadoPor}",
             $"{Archivo(r.Reporte, desde, hasta)}-{agrupacion.ToLowerInvariant()}",
@@ -60,10 +56,10 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             ["Totales", datos.Sum(x => x.Ventas), datos.Sum(x => x.Total)]);
     }
 
-    private async Task<TablaReporte> VentasPorVendedor(ObtenerTablaReporteQuery r, CancellationToken ct)
+    private async Task<TablaReporte> VentasPorVendedorAsync(ObtenerTablaReporteQuery r, CancellationToken ct)
     {
         var (desde, hasta) = PeriodoReporte.Fechas(r.Desde, r.Hasta);
-        var datos = await mediator.Send(new VentasPorVendedorQuery(desde, hasta), ct);
+        var datos = await _mediator.Send(new VentasPorVendedorQuery(desde, hasta), ct);
         var ventas = datos.Sum(x => x.Ventas);
         var total = datos.Sum(x => x.Total);
         return new("Ventas por vendedor", Rango(desde, hasta), Archivo(r.Reporte, desde, hasta),
@@ -72,10 +68,10 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             ["Totales", ventas, total, ventas == 0 ? 0m : total / ventas]);
     }
 
-    private async Task<TablaReporte> TopProductos(ObtenerTablaReporteQuery r, CancellationToken ct)
+    private async Task<TablaReporte> TopProductosAsync(ObtenerTablaReporteQuery r, CancellationToken ct)
     {
         var (desde, hasta) = PeriodoReporte.Fechas(r.Desde, r.Hasta);
-        var datos = await mediator.Send(new TopProductosQuery(desde, hasta, r.Top), ct);
+        var datos = await _mediator.Send(new TopProductosQuery(desde, hasta, r.Top), ct);
         return new("Productos más vendidos", $"{Rango(desde, hasta)} · Máximo {r.Top} productos",
             $"{Archivo(r.Reporte, desde, hasta)}-top-{r.Top}",
             [new("Código"), new("Producto"), new("Unidad"), new("Cantidad", "cantidad"), new("Total", "pen")],
@@ -83,10 +79,10 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             ["Totales", null, null, null, datos.Sum(x => x.Total)]);
     }
 
-    private async Task<TablaReporte> MargenProductos(ObtenerTablaReporteQuery r, CancellationToken ct)
+    private async Task<TablaReporte> MargenProductosAsync(ObtenerTablaReporteQuery r, CancellationToken ct)
     {
         var (desde, hasta) = PeriodoReporte.Fechas(r.Desde, r.Hasta);
-        var datos = await mediator.Send(new MargenPorProductoQuery(desde, hasta), ct);
+        var datos = await _mediator.Send(new MargenPorProductoQuery(desde, hasta), ct);
         var ingreso = datos.Sum(x => x.Ingreso);
         var margen = datos.Sum(x => x.Margen);
         return new("Margen por producto", $"{Rango(desde, hasta)} · Costo promedio vigente",
@@ -98,9 +94,9 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             ["Totales", null, null, ingreso, null, datos.Sum(x => x.Costo), margen, ingreso == 0 ? null : margen * 100 / ingreso]);
     }
 
-    private async Task<TablaReporte> StockBajo(CancellationToken ct)
+    private async Task<TablaReporte> StockBajoAsync(CancellationToken ct)
     {
-        var datos = await mediator.Send(new StockBajoMinimoQuery(), ct);
+        var datos = await _mediator.Send(new StockBajoMinimoQuery(), ct);
         return new("Stock bajo", "Inventario actual", "stock-bajo",
             [new("Código"), new("Producto"), new("Unidad"), new("Stock", "cantidad"),
                 new("Mínimo", "cantidad"), new("Faltante", "cantidad")],
@@ -108,9 +104,9 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             [$"Totales: {datos.Count} productos", null, null, null, null, null]);
     }
 
-    private async Task<TablaReporte> CierreCaja(DateOnly? fecha, CancellationToken ct)
+    private async Task<TablaReporte> CierreCajaAsync(DateOnly? fecha, CancellationToken ct)
     {
-        var datos = await mediator.Send(new CierreCajaQuery(fecha), ct);
+        var datos = await _mediator.Send(new CierreCajaQuery(fecha), ct);
         var dia = FormattableString.Invariant($"{datos.Fecha:yyyy-MM-dd}");
         return new("Cierre de caja", $"Fecha: {dia} · Hora de Perú", $"cierre-caja-{dia}",
             [new("Concepto"), new("Ventas", "entero"), new("Subtotal", "pen"),
@@ -119,10 +115,10 @@ internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerT
             ["Totales", datos.Ventas, datos.Subtotal, datos.Descuento, datos.Total, datos.Anuladas, datos.MontoAnulado]);
     }
 
-    private async Task<TablaReporte> ComprasPorProveedor(ObtenerTablaReporteQuery r, CancellationToken ct)
+    private async Task<TablaReporte> ComprasPorProveedorAsync(ObtenerTablaReporteQuery r, CancellationToken ct)
     {
         var (desde, hasta) = PeriodoReporte.Fechas(r.Desde, r.Hasta);
-        var datos = await mediator.Send(new ComprasPorProveedorQuery(desde, hasta), ct);
+        var datos = await _mediator.Send(new ComprasPorProveedorQuery(desde, hasta), ct);
         return new("Compras por proveedor", $"{Rango(desde, hasta)} · Solo compras recibidas",
             Archivo(r.Reporte, desde, hasta),
             [new("Proveedor"), new("País"), new("Compras", "entero"), new("Total USD", "usd"), new("Total PEN", "pen")],

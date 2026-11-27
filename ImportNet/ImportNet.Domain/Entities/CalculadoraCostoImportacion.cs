@@ -1,6 +1,6 @@
-namespace ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 
-public sealed record CostoLineaImportacion(decimal MercaderiaPen, decimal FletePen, decimal AduanaPen);
+namespace ImportNet.Domain.Entities;
 
 public static class CalculadoraCostoImportacion
 {
@@ -43,10 +43,8 @@ public static class CalculadoraCostoImportacion
         return resultado;
     }
 
-    private static decimal Redondear(decimal valor)
-    {
-        return decimal.Round(valor, 2, MidpointRounding.AwayFromZero);
-    }
+    private static decimal Redondear(decimal valor) =>
+        decimal.Round(valor, 2, MidpointRounding.AwayFromZero);
 
     private static List<decimal> Repartir(decimal total, List<decimal> pesos)
     {

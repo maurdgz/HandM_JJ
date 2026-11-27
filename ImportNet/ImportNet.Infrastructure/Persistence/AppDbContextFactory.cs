@@ -13,7 +13,7 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             .AddEnvironmentVariables()
             .Build();
 
-        var connection = config.GetConnectionString("ImportNet") ?? "Host=localhost;Database=ImportNet;Username=postgres";
+        var connection = ConnectionStringResolver.Resolver(config);
         var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection).Options;
         return new AppDbContext(options);
     }

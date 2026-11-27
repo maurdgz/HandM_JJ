@@ -10,8 +10,8 @@ public interface IPasswordHasher
 
 public interface IUsuarioRepository
 {
-    Task<Usuario?> Autenticar(string email, string password, CancellationToken ct);
-    Task<Usuario?> Obtener(string id, CancellationToken ct);
+    Task<Usuario?> AutenticarAsync(string email, string password, CancellationToken ct = default);
+    Task<Usuario?> ObtenerAsync(string id, CancellationToken ct = default);
 }
 
 public interface IJwtService

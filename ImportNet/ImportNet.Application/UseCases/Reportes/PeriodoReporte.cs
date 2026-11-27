@@ -1,4 +1,4 @@
-using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 
 namespace ImportNet.Application.UseCases.Reportes;
 

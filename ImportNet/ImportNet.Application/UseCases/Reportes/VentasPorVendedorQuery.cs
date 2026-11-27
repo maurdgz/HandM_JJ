@@ -7,21 +7,13 @@ namespace ImportNet.Application.UseCases.Reportes;
 
 public sealed record VentasPorVendedorQuery(DateOnly? Desde = null, DateOnly? Hasta = null) : IRequest<List<VentasPorVendedor>>;
 
-internal sealed class VentasPorVendedorQueryHandler : IRequestHandler<VentasPorVendedorQuery, List<VentasPorVendedor>>
+internal sealed class VentasPorVendedorQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
+    : IRequestHandler<VentasPorVendedorQuery, List<VentasPorVendedor>>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUsuarioActual _actor;
-
-    public VentasPorVendedorQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
-    {
-        _unitOfWork = unitOfWork;
-        _actor = actor;
-    }
-
     public async Task<List<VentasPorVendedor>> Handle(VentasPorVendedorQuery request, CancellationToken cancellationToken)
     {
-        await _actor.ExigirAdministrador(cancellationToken);
+        await actor.ExigirAdministradorAsync(cancellationToken);
         var periodo = PeriodoReporte.Desde(request.Desde, request.Hasta);
-        return await _unitOfWork.Reportes.VentasPorVendedor(periodo.DesdeUtc, periodo.HastaUtc, cancellationToken);
+        return await unitOfWork.Reportes.VentasPorVendedorAsync(periodo.DesdeUtc, periodo.HastaUtc, cancellationToken);
     }
 }

@@ -5,26 +5,31 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class InventarioRepository : IInventarioRepository
+internal sealed class InventarioRepository(AppDbContext context)
+    : GenericRepository<Inventario>(context), IInventarioRepository
 {
-    private readonly AppDbContext _context;
+    public Task<Inventario?> ObtenerAsync(int productoId, int almacenId, CancellationToken ct = default)
+        => _dbSet.FirstOrDefaultAsync(i => i.ProductoId == productoId && i.AlmacenId == almacenId, ct);
 
-    public InventarioRepository(AppDbContext context)
+    public async Task<IReadOnlyDictionary<int, Inventario>> ObtenerPorProductosAsync(
+        IReadOnlyCollection<int> productoIds,
+        int almacenId,
+        CancellationToken ct = default)
     {
-        _context = context;
+        if (productoIds.Count == 0)
+            return new Dictionary<int, Inventario>();
+
+        return await _dbSet
+            .Where(i => i.AlmacenId == almacenId && productoIds.Contains(i.ProductoId))
+            .ToDictionaryAsync(i => i.ProductoId, ct);
     }
 
-    public Task<Inventario?> Obtener(int productoId, int almacenId, CancellationToken ct)
-    {
-        return _context.Set<Inventario>().FirstOrDefaultAsync(i => i.ProductoId == productoId && i.AlmacenId == almacenId, ct);
-    }
-
-    public void Agregar(Inventario inventario)
-    {
-        _context.Set<Inventario>().Add(inventario);
-    }
-
-    public async Task<Pagina<StockProducto>> Buscar(string? texto, bool stockBajo, int pagina, int tamano, CancellationToken ct)
+    public async Task<Pagina<StockProducto>> BuscarAsync(
+        string? texto,
+        bool stockBajo,
+        int pagina,
+        int tamano,
+        CancellationToken ct = default)
     {
         var query = _context.Set<Producto>().AsNoTracking();
 
@@ -35,7 +40,10 @@ internal sealed class InventarioRepository : IInventarioRepository
         }
 
         if (stockBajo)
-            query = query.Where(p => p.Inventarios.Where(i => i.AlmacenId == Almacen.PrincipalId).Sum(i => i.Cantidad) <= p.StockMinimo);
+        {
+            query = query.Where(p =>
+                p.Inventarios.Where(i => i.AlmacenId == Almacen.PrincipalId).Sum(i => i.Cantidad) <= p.StockMinimo);
+        }
 
         var count = await query.CountAsync(ct);
 

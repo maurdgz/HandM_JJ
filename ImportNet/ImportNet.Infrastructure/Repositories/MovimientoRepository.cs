@@ -5,42 +5,35 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class MovimientoRepository : IMovimientoRepository
+internal sealed class MovimientoRepository(AppDbContext context) : IMovimientoRepository
 {
-    private readonly AppDbContext _context;
-
-    public MovimientoRepository(AppDbContext context)
-    {
-        _context = context;
-    }
-
     public void Agregar(MovimientoInventario movimiento)
-    {
-        _context.Set<MovimientoInventario>().Add(movimiento);
-    }
+        => context.Set<MovimientoInventario>().Add(movimiento);
 
-    public Task<bool> TieneEntradasDeCompra(int compraId, CancellationToken ct)
-    {
-        return _context.Set<MovimientoInventario>()
+    public Task<bool> TieneEntradasDeCompraAsync(int compraId, CancellationToken ct = default)
+        => context.Set<MovimientoInventario>()
             .AnyAsync(m => m.CompraId == compraId && m.Tipo == TipoMovimiento.Entrada, ct);
-    }
 
-    public async Task<KardexProducto?> Kardex(int productoId, DateTime? desdeUtc, DateTime? hastaUtc, CancellationToken ct)
+    public async Task<KardexProducto?> ObtenerKardexAsync(
+        int productoId,
+        DateTime? desdeUtc,
+        DateTime? hastaUtc,
+        CancellationToken ct = default)
     {
-        var producto = await _context.Set<Producto>()
+        var producto = await context.Set<Producto>()
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == productoId, ct);
 
         if (producto == null)
             return null;
 
-        var inventario = await _context.Set<Inventario>()
+        var inventario = await context.Set<Inventario>()
             .AsNoTracking()
             .FirstOrDefaultAsync(i => i.ProductoId == productoId && i.AlmacenId == Almacen.PrincipalId, ct);
 
-        var stockActual = inventario == null ? 0m : inventario.Cantidad;
+        var stockActual = inventario?.Cantidad ?? 0m;
 
-        var query = _context.Set<MovimientoInventario>()
+        var query = context.Set<MovimientoInventario>()
             .AsNoTracking()
             .Include(m => m.Empleado)
             .Include(m => m.Venta)

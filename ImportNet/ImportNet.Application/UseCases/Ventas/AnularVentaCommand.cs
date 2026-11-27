@@ -1,5 +1,6 @@
 using ImportNet.Application.Security;
 using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Domain.Interfaces;
 using MediatR;
 
@@ -9,25 +10,20 @@ public sealed record AnularVentaCommand(int VentaId, string Motivo) : IRequest<V
 
 public sealed record StockRepuestoDto(int ProductoId, decimal Cantidad, decimal StockNuevo);
 
-public sealed record VentaAnuladaDto(int Id, int Numero, string Estado, string Motivo, DateTime FechaAnulacion,
+public sealed record VentaAnuladaDto(
+    int Id,
+    int Numero,
+    string Estado,
+    string Motivo,
+    DateTime FechaAnulacion,
     IReadOnlyList<StockRepuestoDto> Reposiciones);
 
-internal sealed class AnularVentaCommandHandler : IRequestHandler<AnularVentaCommand, VentaAnuladaDto>
+internal sealed class AnularVentaCommandHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
+    : IRequestHandler<AnularVentaCommand, VentaAnuladaDto>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUsuarioActual _actor;
-    private readonly IEmpleadoRepository _empleados;
-
-    public AnularVentaCommandHandler(IUnitOfWork unitOfWork, IUsuarioActual actor, IEmpleadoRepository empleados)
-    {
-        _unitOfWork = unitOfWork;
-        _actor = actor;
-        _empleados = empleados;
-    }
-
     public async Task<VentaAnuladaDto> Handle(AnularVentaCommand request, CancellationToken cancellationToken)
     {
-        await _actor.ExigirAdministrador(cancellationToken);
+        await actor.ExigirAdministradorAsync(cancellationToken);
 
         if (request.VentaId <= 0)
             throw new NoEncontradoException("La venta no existe.");
@@ -35,13 +31,12 @@ internal sealed class AnularVentaCommandHandler : IRequestHandler<AnularVentaCom
         if (string.IsNullOrWhiteSpace(request.Motivo))
             throw new ReglaNegocioException("Indique el motivo de la anulación.");
 
-        return await _unitOfWork.EjecutarEnTransaccion(async ct =>
+        return await unitOfWork.EjecutarEnTransaccionAsync(async ct =>
         {
-            var empleado = await _empleados.ObtenerEmpleadoActivo(_actor, ct);
+            var empleado = await unitOfWork.Empleados.ObtenerEmpleadoActivoAsync(actor, ct);
 
-            var venta = await _unitOfWork.Ventas.ObtenerConDetalles(request.VentaId, ct);
-            if (venta == null)
-                throw new NoEncontradoException("La venta no existe.");
+            var venta = await unitOfWork.Ventas.ObtenerConDetallesAsync(request.VentaId, ct)
+                ?? throw new NoEncontradoException("La venta no existe.");
 
             if (venta.Estado == EstadoVenta.Anulada)
                 throw new ConflictoException("La venta ya está anulada; el stock no se repone otra vez.");
@@ -50,18 +45,25 @@ internal sealed class AnularVentaCommandHandler : IRequestHandler<AnularVentaCom
             var fecha = venta.FechaAnulacion!.Value;
             var reposiciones = new List<StockRepuestoDto>();
 
+            var productoIds = venta.Detalles.Select(d => d.ProductoId).Distinct().ToList();
+            var inventarios = await unitOfWork.Inventarios.ObtenerPorProductosAsync(productoIds, Almacen.PrincipalId, ct);
+
             foreach (var linea in venta.Detalles)
             {
-                var inventario = await _unitOfWork.Inventarios.Obtener(linea.ProductoId, Almacen.PrincipalId, ct);
-                if (inventario == null)
+                if (!inventarios.TryGetValue(linea.ProductoId, out var inventario))
                 {
-                    inventario = new Inventario { ProductoId = linea.ProductoId, AlmacenId = Almacen.PrincipalId, Cantidad = 0m };
-                    _unitOfWork.Inventarios.Agregar(inventario);
+                    inventario = new Inventario
+                    {
+                        ProductoId = linea.ProductoId,
+                        AlmacenId = Almacen.PrincipalId,
+                        Cantidad = 0m
+                    };
+                    unitOfWork.Inventarios.Agregar(inventario);
                 }
 
                 inventario.Cantidad += linea.Cantidad;
 
-                _unitOfWork.Movimientos.Agregar(new MovimientoInventario
+                unitOfWork.Movimientos.Agregar(new MovimientoInventario
                 {
                     ProductoId = linea.ProductoId,
                     AlmacenId = Almacen.PrincipalId,
@@ -76,7 +78,13 @@ internal sealed class AnularVentaCommandHandler : IRequestHandler<AnularVentaCom
                 reposiciones.Add(new StockRepuestoDto(linea.ProductoId, linea.Cantidad, inventario.Cantidad));
             }
 
-            return new VentaAnuladaDto(venta.Id, venta.Numero, venta.Estado.ToString(), venta.MotivoAnulacion!, fecha, reposiciones);
+            return new VentaAnuladaDto(
+                venta.Id,
+                venta.Numero,
+                venta.Estado.ToString(),
+                venta.MotivoAnulacion!,
+                fecha,
+                reposiciones);
         }, cancellationToken);
     }
 }

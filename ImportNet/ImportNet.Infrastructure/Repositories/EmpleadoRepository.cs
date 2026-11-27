@@ -5,17 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class EmpleadoRepository : IEmpleadoRepository
+internal sealed class EmpleadoRepository(AppDbContext context) : IEmpleadoRepository
 {
-    private readonly AppDbContext _context;
-
-    public EmpleadoRepository(AppDbContext context)
-    {
-        _context = context;
-    }
-
-    public Task<Empleado?> ObtenerPorUsuario(string usuarioId, CancellationToken ct)
-    {
-        return _context.Set<Empleado>().AsNoTracking().FirstOrDefaultAsync(e => e.UsuarioId == usuarioId, ct);
-    }
+    public Task<Empleado?> ObtenerPorUsuarioAsync(string usuarioId, CancellationToken ct = default)
+        => context.Set<Empleado>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.UsuarioId == usuarioId, ct);
 }

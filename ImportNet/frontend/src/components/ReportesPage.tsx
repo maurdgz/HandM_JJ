@@ -1,4 +1,5 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import AsistenteIaCard from "@/components/AsistenteIaCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,7 +87,13 @@ function TablaVisual({ tabla }: { tabla: Tabla }) {
   </section>;
 }
 
-function VistaReporte({ reporte }: { reporte: Reporte }) {
+function VistaReporte({
+  reporte,
+  onPeriodoChange,
+}: {
+  reporte: Reporte;
+  onPeriodoChange: (desde?: string, hasta?: string) => void;
+}) {
   const conRango = reporte !== "stock-bajo" && reporte !== "cierre-caja";
   const rango = periodoMeses(1);
   const [consulta, setConsulta] = useState(() => ({
@@ -109,11 +116,17 @@ function VistaReporte({ reporte }: { reporte: Reporte }) {
     return () => controlador.abort();
   }, [reporte, consulta]);
 
-  function consultar(evento: SubmitEvent<HTMLFormElement>) {
+  function consultar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+    const formData = new FormData(evento.currentTarget);
     const parametros = new URLSearchParams();
-    for (const [clave, valor] of new FormData(evento.currentTarget)) {
+    for (const [clave, valor] of formData) {
       if (typeof valor === "string" && valor) parametros.set(clave, valor);
+    }
+    const desde = formData.get("desde");
+    const hasta = formData.get("hasta");
+    if (typeof desde === "string" && typeof hasta === "string" && desde && hasta) {
+      onPeriodoChange(desde, hasta);
     }
     setTabla(null);
     setErrorExcel("");
@@ -172,9 +185,14 @@ function VistaReporte({ reporte }: { reporte: Reporte }) {
 }
 
 export default function ReportesPage() {
+  const rangoInicial = periodoMeses(1);
   const [reporte, setReporte] = useState<Reporte>("ventas-por-periodo");
+  const [periodoIa, setPeriodoIa] = useState<{ desde?: string; hasta?: string }>({
+    desde: rangoInicial.desde,
+    hasta: rangoInicial.hasta,
+  });
 
-  return <section className="space-y-5">
+  return <section className="space-y-6">
     <h1 className="text-2xl font-semibold">Reportes</h1>
     <div className="space-y-2">
       <Label htmlFor="reporte">Tipo de reporte</Label>
@@ -185,6 +203,11 @@ export default function ReportesPage() {
         {reportes.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
       </select>
     </div>
-    <VistaReporte key={reporte} reporte={reporte} />
+    <VistaReporte
+      key={reporte}
+      reporte={reporte}
+      onPeriodoChange={(desde, hasta) => setPeriodoIa({ desde, hasta })}
+    />
+    <AsistenteIaCard desde={periodoIa.desde} hasta={periodoIa.hasta} />
   </section>;
 }

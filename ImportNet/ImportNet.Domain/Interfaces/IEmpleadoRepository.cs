@@ -4,5 +4,5 @@ namespace ImportNet.Domain.Interfaces;
 
 public interface IEmpleadoRepository
 {
-    Task<Empleado?> ObtenerPorUsuario(string usuarioId, CancellationToken ct);
+    Task<Empleado?> ObtenerPorUsuarioAsync(string usuarioId, CancellationToken ct = default);
 }

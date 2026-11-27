@@ -5,38 +5,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class ReporteRepository : IReporteRepository
+internal sealed class ReporteRepository(AppDbContext context) : IReporteRepository
 {
     private static readonly TimeSpan HoraPeru = TimeSpan.FromHours(-5);
 
-    private readonly AppDbContext _context;
-
-    public ReporteRepository(AppDbContext context)
-    {
-        _context = context;
-    }
-
     private IQueryable<Venta> VentasRegistradas(DateTime desdeUtc, DateTime hastaUtc)
-    {
-        return _context.Set<Venta>()
+        => context.Set<Venta>()
             .AsNoTracking()
             .Where(v => v.Estado == EstadoVenta.Registrada && v.Fecha >= desdeUtc && v.Fecha < hastaUtc);
-    }
 
     private IQueryable<DetalleVenta> DetallesVendidos(DateTime desdeUtc, DateTime hastaUtc)
-    {
-        return _context.Set<DetalleVenta>()
+        => context.Set<DetalleVenta>()
             .AsNoTracking()
             .Where(d => d.Venta.Estado == EstadoVenta.Registrada && d.Venta.Fecha >= desdeUtc && d.Venta.Fecha < hastaUtc);
-    }
 
     private static decimal Redondear(decimal valor)
-    {
-        return decimal.Round(valor, 2, MidpointRounding.AwayFromZero);
-    }
+        => decimal.Round(valor, 2, MidpointRounding.AwayFromZero);
 
-    public async Task<List<VentasPorPeriodo>> VentasPorPeriodo(DateTime desdeUtc, DateTime hastaUtc,
-        AgrupacionPeriodo agrupacion, CancellationToken ct)
+    public async Task<List<VentasPorPeriodo>> VentasPorPeriodoAsync(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        AgrupacionPeriodo agrupacion,
+        CancellationToken ct = default)
     {
         var ventas = await VentasRegistradas(desdeUtc, hastaUtc)
             .Select(v => new { v.Fecha, v.Total })
@@ -51,7 +41,10 @@ internal sealed class ReporteRepository : IReporteRepository
             .ToList();
     }
 
-    public async Task<List<VentasPorVendedor>> VentasPorVendedor(DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
+    public async Task<List<VentasPorVendedor>> VentasPorVendedorAsync(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct = default)
     {
         var grupos = await VentasRegistradas(desdeUtc, hastaUtc)
             .GroupBy(v => new { v.EmpleadoId, v.Empleado.Nombre, v.Empleado.Apellidos })
@@ -77,7 +70,11 @@ internal sealed class ReporteRepository : IReporteRepository
             .ToList();
     }
 
-    public async Task<List<TopProducto>> TopProductos(DateTime desdeUtc, DateTime hastaUtc, int top, CancellationToken ct)
+    public async Task<List<TopProducto>> TopProductosAsync(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int top,
+        CancellationToken ct = default)
     {
         var grupos = await DetallesVendidos(desdeUtc, hastaUtc)
             .GroupBy(d => new { d.ProductoId, d.Producto.Codigo, d.Producto.Nombre, d.Producto.UnidadMedida })
@@ -101,7 +98,10 @@ internal sealed class ReporteRepository : IReporteRepository
             .ToList();
     }
 
-    public async Task<List<MargenProducto>> MargenPorProducto(DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
+    public async Task<List<MargenProducto>> MargenPorProductoAsync(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct = default)
     {
         var grupos = await DetallesVendidos(desdeUtc, hastaUtc)
             .GroupBy(d => new { d.ProductoId, d.Producto.Codigo, d.Producto.Nombre, d.Producto.CostoPromedio })
@@ -124,8 +124,16 @@ internal sealed class ReporteRepository : IReporteRepository
             var margen = g.Ingreso - costo;
             var porcentaje = g.Ingreso == 0 ? 0m : Redondear(margen / g.Ingreso * 100);
 
-            resultado.Add(new MargenProducto(g.ProductoId, g.Codigo, g.Nombre, g.Cantidad, g.Ingreso,
-                g.CostoPromedio, costo, margen, porcentaje));
+            resultado.Add(new MargenProducto(
+                g.ProductoId,
+                g.Codigo,
+                g.Nombre,
+                g.Cantidad,
+                g.Ingreso,
+                g.CostoPromedio,
+                costo,
+                margen,
+                porcentaje));
         }
 
         return resultado
@@ -134,9 +142,9 @@ internal sealed class ReporteRepository : IReporteRepository
             .ToList();
     }
 
-    public async Task<List<ProductoStockBajo>> StockBajoMinimo(CancellationToken ct)
+    public async Task<List<ProductoStockBajo>> StockBajoMinimoAsync(CancellationToken ct = default)
     {
-        var productos = await _context.Set<Producto>()
+        var productos = await context.Set<Producto>()
             .AsNoTracking()
             .Where(p => p.Activo)
             .Select(p => new
@@ -152,31 +160,51 @@ internal sealed class ReporteRepository : IReporteRepository
             .ToListAsync(ct);
 
         return productos
-            .Select(p => new ProductoStockBajo(p.Id, p.Codigo, p.Nombre, p.UnidadMedida, p.Stock, p.StockMinimo,
+            .Select(p => new ProductoStockBajo(
+                p.Id,
+                p.Codigo,
+                p.Nombre,
+                p.UnidadMedida,
+                p.Stock,
+                p.StockMinimo,
                 p.StockMinimo - p.Stock))
             .OrderByDescending(x => x.Faltante)
             .ThenBy(x => x.Nombre, StringComparer.Ordinal)
             .ToList();
     }
 
-    public async Task<CierreCaja> CierreCaja(DateOnly fecha, DateTime desdeUtc, DateTime hastaUtc, int? empleadoId,
-        CancellationToken ct)
+    public async Task<CierreCaja> CierreCajaAsync(
+        DateOnly fecha,
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int? empleadoId,
+        CancellationToken ct = default)
     {
-        var query = _context.Set<Venta>()
+        var query = context.Set<Venta>()
             .AsNoTracking()
-            .Include(v => v.Empleado)
             .Where(v => v.Fecha >= desdeUtc && v.Fecha < hastaUtc);
 
         if (empleadoId != null)
             query = query.Where(v => v.EmpleadoId == empleadoId);
 
-        var ventas = await query.ToListAsync(ct);
+        var ventas = await query
+            .Select(v => new
+            {
+                v.EmpleadoId,
+                EmpleadoNombre = v.Empleado.Nombre,
+                EmpleadoApellidos = v.Empleado.Apellidos,
+                v.Estado,
+                v.Subtotal,
+                v.Descuento,
+                v.Total
+            })
+            .ToListAsync(ct);
 
         var registradas = ventas.Where(v => v.Estado == EstadoVenta.Registrada).ToList();
         var anuladas = ventas.Where(v => v.Estado == EstadoVenta.Anulada).ToList();
 
         var porVendedor = registradas
-            .GroupBy(v => new { v.EmpleadoId, Vendedor = (v.Empleado.Nombre + " " + v.Empleado.Apellidos).Trim() })
+            .GroupBy(v => new { v.EmpleadoId, Vendedor = (v.EmpleadoNombre + " " + v.EmpleadoApellidos).Trim() })
             .Select(g => new CierreVendedor(g.Key.EmpleadoId, g.Key.Vendedor, g.Count(), g.Sum(v => v.Total)))
             .OrderByDescending(x => x.Total)
             .ThenBy(x => x.Vendedor, StringComparer.Ordinal)
@@ -193,21 +221,30 @@ internal sealed class ReporteRepository : IReporteRepository
             porVendedor);
     }
 
-    public async Task<List<ComprasPorProveedor>> ComprasPorProveedor(DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
+    public async Task<List<ComprasPorProveedor>> ComprasPorProveedorAsync(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct = default)
     {
-        var compras = await _context.Set<Compra>()
+        var compras = await context.Set<Compra>()
             .AsNoTracking()
-            .Include(c => c.Proveedor)
-            .Include(c => c.Lineas)
             .Where(c => c.Estado == EstadoCompra.Recibida && c.Fecha >= desdeUtc && c.Fecha < hastaUtc)
+            .Select(c => new
+            {
+                c.ProveedorId,
+                ProveedorNombre = c.Proveedor.Nombre,
+                ProveedorPais = c.Proveedor.Pais,
+                SubtotalUsd = c.Lineas.Sum(l => l.Cantidad * l.CostoUnitarioUsd),
+                TotalPen = c.Lineas.Sum(l => l.MercaderiaPen + l.FletePen + l.AduanaPen)
+            })
             .ToListAsync(ct);
 
         return compras
-            .GroupBy(c => new { c.ProveedorId, c.Proveedor.Nombre, c.Proveedor.Pais })
+            .GroupBy(c => new { c.ProveedorId, c.ProveedorNombre, c.ProveedorPais })
             .Select(g => new ComprasPorProveedor(
                 g.Key.ProveedorId,
-                g.Key.Nombre,
-                g.Key.Pais,
+                g.Key.ProveedorNombre,
+                g.Key.ProveedorPais,
                 g.Count(),
                 Redondear(g.Sum(c => c.SubtotalUsd)),
                 g.Sum(c => c.TotalPen)))
@@ -216,8 +253,12 @@ internal sealed class ReporteRepository : IReporteRepository
             .ToList();
     }
 
-    public async Task<ResumenDashboard> Dashboard(DateOnly fecha, DateTime inicioDiaUtc, DateTime finDiaUtc,
-        DateTime inicioMesUtc, CancellationToken ct)
+    public async Task<ResumenDashboard> DashboardAsync(
+        DateOnly fecha,
+        DateTime inicioDiaUtc,
+        DateTime finDiaUtc,
+        DateTime inicioMesUtc,
+        CancellationToken ct = default)
     {
         var ventasMes = await VentasRegistradas(inicioMesUtc, finDiaUtc)
             .Select(v => new { v.Fecha, v.Total })
@@ -235,7 +276,7 @@ internal sealed class ReporteRepository : IReporteRepository
             .GroupBy(l => new { l.ProductoId, l.CostoPromedio })
             .Sum(g => g.Sum(l => l.Subtotal) - Redondear(g.Sum(l => l.Cantidad) * g.Key.CostoPromedio));
 
-        var productos = await _context.Set<Producto>()
+        var productos = await context.Set<Producto>()
             .AsNoTracking()
             .Where(p => p.Activo)
             .Select(p => new

@@ -1,4 +1,5 @@
 using ImportNet.Application.UseCases.Compras;
+using ImportNet.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,50 +9,53 @@ namespace ImportNet.API.Controllers.Api;
 [ApiController]
 [Route("api/compras")]
 [Authorize(Policy = "Administracion")]
-public class ComprasController : ControllerBase
+public sealed class ComprasController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public ComprasController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [HttpGet]
-    public async Task<IActionResult> Listar(int pagina = 1, int tamano = 20, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new ListarComprasQuery(pagina, tamano), ct));
-    }
+    [ProducesResponseType(typeof(Pagina<CompraDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Listar(
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = 20,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new ListarComprasQuery(pagina, tamano), ct));
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(CompraDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Obtener(int id, CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(new ObtenerCompraQuery(id), ct));
-    }
+        => Ok(await mediator.Send(new ObtenerCompraQuery(id), ct));
 
     [HttpPost]
+    [ProducesResponseType(typeof(CompraDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Crear(CompraDatos datos, CancellationToken ct)
     {
-        var compra = await _mediator.Send(new CrearCompraCommand(datos), ct);
+        var compra = await mediator.Send(new CrearCompraCommand(datos), ct);
         return CreatedAtAction(nameof(Obtener), new { id = compra.Id }, compra);
     }
 
     [HttpPost("{id:int}/recibir")]
-    public async Task<IActionResult> Recibir(int id, CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(new RecibirCompraCommand(id), ct));
-    }
+    [ProducesResponseType(typeof(CompraDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Recibir([FromRoute] int id, CancellationToken ct)
+        => Ok(await mediator.Send(new RecibirCompraCommand(id), ct));
 
     [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(CompraDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Editar(int id, CompraDatos datos, CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(new EditarCompraCommand(id, datos), ct));
-    }
+        => Ok(await mediator.Send(new EditarCompraCommand(id, datos), ct));
 
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Eliminar(int id, CancellationToken ct)
     {
-        await _mediator.Send(new EliminarCompraCommand(id), ct);
+        await mediator.Send(new EliminarCompraCommand(id), ct);
         return NoContent();
     }
 }

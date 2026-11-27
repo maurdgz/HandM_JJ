@@ -34,18 +34,18 @@ public static class JwtRegistration
                 };
                 options.Events = new JwtBearerEvents
                 {
-                    OnTokenValidated = ValidarCuentaVigente
+                    OnTokenValidated = ValidarCuentaVigenteAsync
                 };
             });
 
         return services;
     }
 
-    private static async Task ValidarCuentaVigente(TokenValidatedContext context)
+    private static async Task ValidarCuentaVigenteAsync(TokenValidatedContext context)
     {
         var usuarios = context.HttpContext.RequestServices.GetRequiredService<IUsuarioRepository>();
         var id = context.Principal!.FindFirst("sub")?.Value;
-        var usuario = id == null ? null : await usuarios.Obtener(id, context.HttpContext.RequestAborted);
+        var usuario = id == null ? null : await usuarios.ObtenerAsync(id, context.HttpContext.RequestAborted);
 
         if (usuario == null)
         {
@@ -58,8 +58,11 @@ public static class JwtRegistration
         var rolesToken = context.Principal.FindAll("role").Select(c => c.Value).Order().ToList();
         var rolesActuales = usuario.Roles.Order().ToList();
 
-        if (version != JwtService.Version(usuario.VersionAcceso) || empleadoId != usuario.Empleado.Id.ToString()
+        if (version != JwtService.Version(usuario.VersionAcceso)
+            || empleadoId != usuario.Empleado.Id.ToString()
             || !rolesToken.SequenceEqual(rolesActuales))
+        {
             context.Fail("Acceso revocado.");
+        }
     }
 }

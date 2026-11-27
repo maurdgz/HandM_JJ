@@ -4,9 +4,10 @@ namespace ImportNet.Domain.Interfaces;
 
 public interface IVentaRepository
 {
-    Task<Pagina<ResumenVenta>> Historial(DateTime? desdeUtc, DateTime? hastaUtc, int? empleadoId, int pagina, int tamano, CancellationToken ct);
-    Task<NotaVenta?> Nota(int ventaId, CancellationToken ct);
-    Task<Venta?> ObtenerConDetalles(int ventaId, CancellationToken ct);
-    Task<int> SiguienteNumero(CancellationToken ct);
+    Task<Pagina<ResumenVenta>> HistorialAsync(DateTime? desdeUtc, DateTime? hastaUtc, int? empleadoId, int pagina,
+        int tamano, CancellationToken ct = default);
+    Task<NotaVenta?> ObtenerNotaAsync(int ventaId, CancellationToken ct = default);
+    Task<Venta?> ObtenerConDetallesAsync(int ventaId, CancellationToken ct = default);
+    Task<int> SiguienteNumeroAsync(CancellationToken ct = default);
     void Agregar(Venta venta);
 }

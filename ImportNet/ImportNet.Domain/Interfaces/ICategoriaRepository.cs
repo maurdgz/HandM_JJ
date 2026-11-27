@@ -4,6 +4,6 @@ namespace ImportNet.Domain.Interfaces;
 
 public interface ICategoriaRepository : IGenericRepository<Categoria>
 {
-    Task<bool> ExisteNombre(string nombreNormalizado, int excluirId, CancellationToken ct);
-    Task<bool> TieneProductos(int id, CancellationToken ct);
+    Task<bool> ExisteNombreAsync(string nombreNormalizado, int excluirId, CancellationToken ct = default);
+    Task<bool> TieneProductosAsync(int id, CancellationToken ct = default);
 }

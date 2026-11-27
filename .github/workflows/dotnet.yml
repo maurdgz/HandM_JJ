@@ -23,4 +23,5 @@ jobs:
         run: ./ImportNet/scripts/Preparar-Frontend.ps1
       - run: dotnet restore ImportNet.sln
       - run: dotnet build ImportNet.sln --no-restore --configuration Release
+      - run: dotnet test ImportNet.sln --no-build --configuration Release
       - run: dotnet publish ImportNet/ImportNet.API --no-build --configuration Release --output artifacts/api

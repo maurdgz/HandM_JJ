@@ -1,24 +1,19 @@
 using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class ProveedorRepository : IProveedorRepository
+internal sealed class ProveedorRepository(AppDbContext context)
+    : GenericRepository<Proveedor>(context), IProveedorRepository
 {
-    private readonly AppDbContext _context;
-
-    public ProveedorRepository(AppDbContext context)
+    public async Task<IReadOnlyList<Proveedor>> ListarAsync(string? texto, CancellationToken ct = default)
     {
-        _context = context;
-    }
+        var query = _dbSet.AsNoTracking();
 
-    public async Task<IReadOnlyList<Proveedor>> Proveedores(string? texto, CancellationToken ct)
-    {
-        var query = _context.Set<Proveedor>().AsNoTracking();
-
-        if (texto != null)
+        if (!string.IsNullOrWhiteSpace(texto))
             query = query.Where(p => p.Nombre.ToLower().Contains(texto.ToLower()));
 
         return await query
@@ -28,28 +23,21 @@ internal sealed class ProveedorRepository : IProveedorRepository
             .ToListAsync(ct);
     }
 
-    public Task<Proveedor?> Proveedor(int id, CancellationToken ct)
-    {
-        return _context.Set<Proveedor>().FirstOrDefaultAsync(p => p.Id == id, ct);
-    }
-
-    public async Task<IReadOnlyList<int>> Productos(int proveedorId, CancellationToken ct)
-    {
-        return await _context.Set<ProveedorProducto>()
+    public async Task<IReadOnlyList<int>> ObtenerProductosIdsAsync(int proveedorId, CancellationToken ct = default)
+        => await _context.Set<ProveedorProducto>()
             .Where(pp => pp.ProveedorId == proveedorId)
             .OrderBy(pp => pp.ProductoId)
             .Select(pp => pp.ProductoId)
             .ToListAsync(ct);
-    }
 
-    public async Task GuardarProveedor(Proveedor proveedor, IReadOnlyList<int> productos, CancellationToken ct)
+    public async Task GuardarConProductosAsync(Proveedor proveedor, IReadOnlyList<int> productos, CancellationToken ct = default)
     {
         var existentes = await _context.Set<Producto>().CountAsync(p => productos.Contains(p.Id), ct);
         if (existentes != productos.Count)
             throw new ReglaNegocioException("Producto inexistente o repetido.");
 
         if (proveedor.Id == 0)
-            _context.Set<Proveedor>().Add(proveedor);
+            Agregar(proveedor);
 
         var actuales = await _context.Set<ProveedorProducto>()
             .Where(pp => pp.ProveedorId == proveedor.Id)
@@ -58,24 +46,23 @@ internal sealed class ProveedorRepository : IProveedorRepository
         var quitar = actuales.Where(pp => !productos.Contains(pp.ProductoId)).ToList();
         _context.Set<ProveedorProducto>().RemoveRange(quitar);
 
-        var idsActuales = actuales.Select(pp => pp.ProductoId).ToList();
+        var idsActuales = actuales.Select(pp => pp.ProductoId).ToHashSet();
         foreach (var productoId in productos.Where(id => !idsActuales.Contains(id)))
             proveedor.Suministros.Add(new ProveedorProducto { ProductoId = productoId });
     }
 
-    public async Task EliminarProveedor(int id, CancellationToken ct)
+    public async Task EliminarProveedorAsync(int id, CancellationToken ct = default)
     {
-        var proveedor = await Proveedor(id, ct);
-        if (proveedor == null)
-            throw new NoEncontradoException("Proveedor no encontrado.");
+        var proveedor = await ObtenerPorIdAsync(id, ct)
+            ?? throw new NoEncontradoException("Proveedor no encontrado.");
 
         var tieneCompras = await _context.Set<Compra>().AnyAsync(c => c.ProveedorId == id, ct);
         var tieneMovimientos = await _context.Set<MovimientoInventario>().AnyAsync(m => m.ProveedorId == id, ct);
         if (tieneCompras || tieneMovimientos)
-            throw new ConflictoException("El proveedor tiene historial.");
+            throw new ConflictoException("Proveedor con movimientos o compras.");
 
-        var relaciones = await _context.Set<ProveedorProducto>().Where(pp => pp.ProveedorId == id).ToListAsync(ct);
-        _context.Set<ProveedorProducto>().RemoveRange(relaciones);
-        _context.Set<Proveedor>().Remove(proveedor);
+        var suministros = await _context.Set<ProveedorProducto>().Where(pp => pp.ProveedorId == id).ToListAsync(ct);
+        _context.Set<ProveedorProducto>().RemoveRange(suministros);
+        Eliminar(proveedor);
     }
 }

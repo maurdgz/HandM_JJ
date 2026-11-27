@@ -1,22 +1,18 @@
-using ImportNet.Domain.Entities;
+using ImportNet.Application.Security;
 using ImportNet.Domain.Interfaces;
 using MediatR;
 
 namespace ImportNet.Application.UseCases.Productos.Queries;
 
-public sealed record GetAllProductosQuery : IRequest<IReadOnlyList<Producto>>;
+public sealed record GetAllProductosQuery : IRequest<IReadOnlyList<ProductoDto>>;
 
-internal sealed class GetAllProductosQueryHandler : IRequestHandler<GetAllProductosQuery, IReadOnlyList<Producto>>
+internal sealed class GetAllProductosQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
+    : IRequestHandler<GetAllProductosQuery, IReadOnlyList<ProductoDto>>
 {
-    private readonly IUnitOfWork _unitOfWork;
-
-    public GetAllProductosQueryHandler(IUnitOfWork unitOfWork)
+    public async Task<IReadOnlyList<ProductoDto>> Handle(GetAllProductosQuery request, CancellationToken cancellationToken)
     {
-        _unitOfWork = unitOfWork;
-    }
-
-    public Task<IReadOnlyList<Producto>> Handle(GetAllProductosQuery request, CancellationToken cancellationToken)
-    {
-        return _unitOfWork.Productos.Listar(cancellationToken);
+        var esAdministrador = await actor.EsAdministradorAsync(cancellationToken);
+        var productos = await unitOfWork.Productos.ListarAsync(cancellationToken);
+        return productos.Select(p => ProductoDto.Desde(p, esAdministrador)).ToList();
     }
 }

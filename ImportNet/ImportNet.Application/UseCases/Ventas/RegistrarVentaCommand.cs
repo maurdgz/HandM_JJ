@@ -1,5 +1,6 @@
 using ImportNet.Application.Security;
 using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Domain.Interfaces;
 using MediatR;
 
@@ -7,63 +8,63 @@ namespace ImportNet.Application.UseCases.Ventas;
 
 public sealed record LineaVentaEntrada(int ProductoId, decimal Cantidad, decimal Descuento);
 
-public sealed record RegistrarVentaCommand(int? ClienteId, IReadOnlyList<LineaVentaEntrada> Lineas) : IRequest<VentaRegistradaDto>;
+public sealed record RegistrarVentaCommand(int? ClienteId, IReadOnlyList<LineaVentaEntrada> Lineas)
+    : IRequest<VentaRegistradaDto>;
 
-public sealed record VentaRegistradaDto(int Id, int Numero, DateTime Fecha, decimal Subtotal, decimal Descuento, decimal Total,
+public sealed record VentaRegistradaDto(
+    int Id,
+    int Numero,
+    DateTime Fecha,
+    decimal Subtotal,
+    decimal Descuento,
+    decimal Total,
     IReadOnlyList<DetalleVentaDto> Lineas);
 
-public sealed record DetalleVentaDto(int ProductoId, decimal Cantidad, decimal PrecioUnitario, decimal Descuento, decimal Subtotal);
+public sealed record DetalleVentaDto(
+    int ProductoId,
+    decimal Cantidad,
+    decimal PrecioUnitario,
+    decimal Descuento,
+    decimal Subtotal);
 
-internal sealed class RegistrarVentaCommandHandler : IRequestHandler<RegistrarVentaCommand, VentaRegistradaDto>
+internal sealed class RegistrarVentaCommandHandler(IUnitOfWork unitOfWork, IUsuarioActual usuario)
+    : IRequestHandler<RegistrarVentaCommand, VentaRegistradaDto>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUsuarioActual _usuario;
-    private readonly IEmpleadoRepository _empleados;
-
-    public RegistrarVentaCommandHandler(IUnitOfWork unitOfWork, IUsuarioActual usuario, IEmpleadoRepository empleados)
-    {
-        _unitOfWork = unitOfWork;
-        _usuario = usuario;
-        _empleados = empleados;
-    }
-
     public async Task<VentaRegistradaDto> Handle(RegistrarVentaCommand request, CancellationToken cancellationToken)
     {
-        var empleado = await _empleados.ObtenerEmpleadoActivo(_usuario, cancellationToken);
+        var empleado = await unitOfWork.Empleados.ObtenerEmpleadoActivoAsync(usuario, cancellationToken);
         var lineas = ValidarLineas(request.Lineas);
 
-        return await _unitOfWork.EjecutarEnTransaccion(async ct =>
+        return await unitOfWork.EjecutarEnTransaccionAsync(async ct =>
         {
             var clienteId = request.ClienteId ?? 1;
-            if (await _unitOfWork.Clientes.Cliente(clienteId, ct) == null)
+            if (await unitOfWork.Clientes.ObtenerPorIdAsync(clienteId, ct) == null)
                 throw new NoEncontradoException("Cliente no encontrado.");
 
-            var productos = new Dictionary<int, Producto>();
+            var productoIds = lineas.Select(l => l.ProductoId).ToList();
+            var productos = await unitOfWork.Productos.ObtenerPorIdsAsync(productoIds, ct);
+
             foreach (var linea in lineas)
             {
-                var producto = await _unitOfWork.Productos.Obtener(linea.ProductoId, ct);
-                if (producto == null || !producto.Activo)
+                if (!productos.TryGetValue(linea.ProductoId, out var producto) || !producto.Activo)
                     throw new NoEncontradoException("Hay productos inexistentes o inactivos.");
-
-                productos[linea.ProductoId] = producto;
             }
 
-            var inventarios = new Dictionary<int, Inventario>();
+            var inventarios = await unitOfWork.Inventarios.ObtenerPorProductosAsync(productoIds, Almacen.PrincipalId, ct);
+
             foreach (var linea in lineas)
             {
                 if (linea.Descuento > productos[linea.ProductoId].PrecioVenta * linea.Cantidad * 0.5m)
                     throw new ReglaNegocioException("El descuento máximo por línea es 50%.");
 
-                var inventario = await _unitOfWork.Inventarios.Obtener(linea.ProductoId, Almacen.PrincipalId, ct);
-                if (inventario == null || inventario.Cantidad < linea.Cantidad)
+                if (!inventarios.TryGetValue(linea.ProductoId, out var inventario) || inventario.Cantidad < linea.Cantidad)
                     throw new ConflictoException("Stock insuficiente para completar la venta.");
-
-                inventarios[linea.ProductoId] = inventario;
             }
 
-            var subtotal = lineas.Sum(l => decimal.Round(productos[l.ProductoId].PrecioVenta * l.Cantidad, 2, MidpointRounding.AwayFromZero));
+            var subtotal = lineas.Sum(l =>
+                decimal.Round(productos[l.ProductoId].PrecioVenta * l.Cantidad, 2, MidpointRounding.AwayFromZero));
             var descuento = lineas.Sum(l => l.Descuento);
-            var numero = await _unitOfWork.Ventas.SiguienteNumero(ct);
+            var numero = await unitOfWork.Ventas.SiguienteNumeroAsync(ct);
             var fecha = DateTime.UtcNow;
 
             var venta = new Venta(numero, empleado.Id, clienteId, subtotal, descuento, fecha);
@@ -75,7 +76,7 @@ internal sealed class RegistrarVentaCommandHandler : IRequestHandler<RegistrarVe
 
                 inventarios[linea.ProductoId].Cantidad -= linea.Cantidad;
 
-                _unitOfWork.Movimientos.Agregar(new MovimientoInventario
+                unitOfWork.Movimientos.Agregar(new MovimientoInventario
                 {
                     ProductoId = linea.ProductoId,
                     AlmacenId = Almacen.PrincipalId,
@@ -87,14 +88,21 @@ internal sealed class RegistrarVentaCommandHandler : IRequestHandler<RegistrarVe
                 });
             }
 
-            _unitOfWork.Ventas.Agregar(venta);
-            await _unitOfWork.Guardar(ct);
+            unitOfWork.Ventas.Agregar(venta);
+            await unitOfWork.GuardarAsync(ct);
 
             var detalles = venta.Detalles
                 .Select(d => new DetalleVentaDto(d.ProductoId, d.Cantidad, d.PrecioUnitario, d.Descuento, d.Subtotal))
                 .ToList();
 
-            return new VentaRegistradaDto(venta.Id, venta.Numero, venta.Fecha, venta.Subtotal, venta.Descuento, venta.Total, detalles);
+            return new VentaRegistradaDto(
+                venta.Id,
+                venta.Numero,
+                venta.Fecha,
+                venta.Subtotal,
+                venta.Descuento,
+                venta.Total,
+                detalles);
         }, cancellationToken);
     }
 

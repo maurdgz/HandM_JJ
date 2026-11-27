@@ -1,30 +1,67 @@
 # ImportNet
 
-Sistema para una tienda importadora: empleados y roles, catálogo, compras, inventario, POS, historial, anulación de ventas y dashboard por rol con autenticación JWT.
+Sistema de gestión para una tienda importadora: empleados y roles, catálogo, proveedores/clientes, compras de importación con prorrateo de costos, inventario y kardex, punto de venta (POS), historial y anulación de ventas, reportes con exportación a Excel, dashboard por rol y **asistente de análisis de negocio con IA**.
 
-**Stack:** ASP.NET Core Web API .NET 10, PostgreSQL (EF Core + Npgsql), MediatR, arquitectura hexagonal (Domain, Application, Infrastructure, API) y xUnit. Frontend: Astro + TypeScript + Tailwind con islas React y shadcn/ui.
+## Stack y Arquitectura
+
+- **Backend:** ASP.NET Core Web API (.NET 10), PostgreSQL (EF Core 10 + Npgsql), MediatR + Pipeline Behaviors (`LoggingBehavior`, `ValidationBehavior`), FluentValidation, ClosedXML, BCrypt + JWT HS256.
+- **Arquitectura Hexagonal + DDD:**
+  - `ImportNet.Domain`: entidades (`Entity`), reglas de negocio, excepciones de dominio (`DomainException`) y puertos (`IUnitOfWork`, repositorios).
+  - `ImportNet.Application`: casos de uso CQRS con MediatR, validadores FluentValidation, behaviors transversales y puerto `IAsistenteIaService`.
+  - `ImportNet.Infrastructure`: persistencia EF Core/PostgreSQL, `UnitOfWork` con transacciones `Serializable`, repositorios optimizados sin N+1, `ExportadorExcel` y adaptador externo `AsistenteIaService` (Gemini / OpenAI).
+  - `ImportNet.API`: controladores `sealed`, middlewares (`RequestLoggingMiddleware`, `SecurityHeadersMiddleware`, `GlobalExceptionHandler`), Rate Limiting de login, `/health` y hosting del frontend compilado.
+- **Frontend:** Astro + TypeScript + Tailwind CSS + React + shadcn/ui.
 
 ## Levantar en local
 
+Los comandos se ejecutan desde `ImportNet`. Las credenciales locales viven en User Secrets (`ImportNet-local-2026`).
 
+```powershell
+# 1. Secretos locales: PostgreSQL y clave JWT
+powershell -ExecutionPolicy Bypass -File ./scripts/Configurar-Conexion.ps1
+powershell -ExecutionPolicy Bypass -File ./scripts/Configurar-Jwt.ps1
 
-En despliegues usar las variables `ConnectionStrings__ImportNet`, `Jwt__Issuer`, `Jwt__Audience` y `Jwt__SigningKey` (Base64, mínimo 32 bytes).
+# 2. Migraciones
+dotnet ef database update --project ImportNet.Infrastructure --startup-project ImportNet.API
 
-**Aplicación:** http://localhost:5080/login. Repetir la preparación al cambiar el frontend; `-SkipInstall` omite npm ci si las dependencias ya están instaladas. No se necesita iniciar Astro para este modo.
+# 3. Primer administrador
+powershell -ExecutionPolicy Bypass -File ./scripts/Crear-Administrador.ps1
 
-**Swagger:** http://localhost:5080/swagger (solo en Development). Hacer login en `POST /api/auth/login`, pegar `accessToken` en **Authorize** sin prefijo.
+# 4. Compilar frontend Astro para servirlo desde la API (Node 24+)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/Preparar-Frontend.ps1
 
+# 5. Ejecutar API + Frontend en http://localhost:5080
+dotnet run --project ImportNet.API --launch-profile ImportNet
+```
 
-La suite normal usa SQLite en memoria. La prueba en Chrome es opcional (`IMPORTNET_BROWSER_TESTS=1`, requiere Python y Playwright).
+### Configurar el Asistente IA (Gemini u OpenAI)
 
-## Proveedores y clientes (issue #5)
+En desarrollo local (User Secrets) o en producción (variables de entorno):
 
-Las páginas `/proveedores` y `/clientes` incluyen buscador. El administrador gestiona proveedores y su relación con productos; el vendedor puede registrar y consultar clientes, pero no administrar proveedores ni editar o eliminar clientes.
+```bash
+Ia__Provider=Gemini          # "Gemini" o "OpenAI"
+Ia__Model=gemini-flash-latest # o "gpt-4o-mini" para OpenAI
+Ia__ApiKey=<TU_API_KEY>
+```
 
-- Los casos de uso de terceros consumen los puertos `IProveedorRepository` e `IClienteRepository` mediante `IUnitOfWork`. El adaptador EF comparte la unidad de trabajo; `ITercerosRepository` se conserva como contrato compuesto para compatibilidad con compras.
-- `GET /api/clientes/por-documento/{documento}` busca por documento completo, conserva ceros iniciales y requiere autenticación. Devuelve `200` si existe, `404` si no existe y `400` para formatos inválidos.
-- Al registrar o editar se exige DNI de 8 o RUC de 11 dígitos ASCII. Se valida el formato, sin consulta externa a RENIEC/SUNAT. Los documentos duplicados devuelven `409`.
-- El seed `Cliente varios` (`00000000`) puede consultarse, pero no editarse ni eliminarse.
+Endpoint: `POST /api/ia/analizar` (solo `Administrador`) e integrado visualmente en `/reportes`.
 
-Verificación específica: `dotnet test ../ImportNet.sln --configuration Release --filter FullyQualifiedName~TercerosTests` desde `ImportNet`. Cubre documentos, duplicados, seed, sustitución de productos del proveedor y autorización HTTP por rol.
+## Despliegue en Render + PostgreSQL en la nube
 
+El repositorio incluye un `Dockerfile` multi-stage (compila Astro + .NET 10 API en un solo servicio) y el blueprint `render.yaml`:
+
+1. En **Render Dashboard**, ir a **New + → Blueprint** y conectar este repositorio/rama.
+2. Render creará automáticamente la base PostgreSQL (`importnet-db`) y el Web Service Docker (`importnet-web`) con `/health`.
+3. Completar las 3 variables secretas solicitadas (`sync: false`):
+   - `Jwt__SigningKey`: generar con `openssl rand -base64 32`
+   - `Ia__ApiKey`: clave API de Google Gemini (o OpenAI si `Ia__Provider=OpenAI`)
+   - `Bootstrap__Password`: contraseña inicial del administrador (mínimo 12 caracteres, mayúscula, minúscula, número y símbolo)
+4. Al iniciar, `IMPORTNET_APPLY_MIGRATIONS=true` aplica las migraciones automáticamente sobre PostgreSQL en la nube y `Bootstrap__AutoCreateOnStartup=true` crea el administrador inicial de forma idempotente.
+
+## Pruebas
+
+```bash
+dotnet restore ImportNet.sln
+dotnet build ImportNet.sln --no-restore --configuration Release
+dotnet test ImportNet.sln --no-build --configuration Release
+```

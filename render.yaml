@@ -1,0 +1,50 @@
+databases:
+  - name: importnet-db
+    databaseName: importnet
+    user: importnet
+    plan: free
+
+services:
+  - type: web
+    name: importnet-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: importnet-db
+          property: connectionString
+      - key: IMPORTNET_APPLY_MIGRATIONS
+        value: "true"
+      - key: Swagger__Enabled
+        value: "true"
+      - key: Jwt__Issuer
+        value: ImportNet
+      - key: Jwt__Audience
+        value: ImportNet.Frontend
+      - key: Jwt__SigningKey
+        sync: false # Pegar Base64 de al menos 32 bytes (ej: openssl rand -base64 32)
+      - key: Ia__Provider
+        value: Gemini
+      - key: Ia__Model
+        value: gemini-flash-latest
+      - key: Ia__ApiKey
+        sync: false # Pegar API Key de Gemini (o cambiar Ia__Provider a OpenAI y pegar API Key)
+      - key: Bootstrap__AutoCreateOnStartup
+        value: "true"
+      - key: Bootstrap__Nombre
+        value: Administrador
+      - key: Bootstrap__Apellidos
+        value: ImportNet
+      - key: Bootstrap__DocumentoIdentidad
+        value: "12345678"
+      - key: Bootstrap__Email
+        value: admin@importnet.pe
+      - key: Bootstrap__Telefono
+        value: "999999999"
+      - key: Bootstrap__Password
+        sync: false # Contraseña inicial >=12 caracteres con mayúscula, minúscula, número y símbolo
