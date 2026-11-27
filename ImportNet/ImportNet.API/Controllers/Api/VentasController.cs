@@ -1,6 +1,9 @@
 using ImportNet.Application.UseCases.Ventas;
+using ImportNet.Domain.Entities;
+using ImportNet.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImportNet.API.Controllers.Api;
@@ -13,5 +16,22 @@ public sealed class VentasController(IMediator mediator) : ControllerBase
     {
         var venta = await mediator.Send(command, ct);
         return Created($"/api/ventas/{venta.Id}", venta);
+    }
+
+    /// <summary>Historial por fecha (hora de Perú). El Vendedor solo recibe sus ventas.</summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(Pagina<ResumenVenta>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Historial(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = 20,
+        CancellationToken ct = default)
+    {
+        var resultado = await mediator.Send(new ConsultarVentasQuery(desde, hasta, pagina, tamano), ct);
+        return Ok(resultado);
     }
 }
