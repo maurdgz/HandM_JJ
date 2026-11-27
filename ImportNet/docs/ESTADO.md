@@ -48,14 +48,8 @@ las dos pruebas habilitadas de concurrencia PostgreSQL.
 Detalle de uso, migraciones, permisos y comprobación manual:
 [Día 08: recepción e inventario](DIA-08-RECEPCION-INVENTARIO.md).
 
-La entrega original correspondía al Día 08. Los trabajos posteriores están descritos en [Día 12](DIA-12-VENTAS.md) y [Día 16](DIA-16-SEGURIDAD.md).
+La entrega original correspondía al Día 08. Los trabajos posteriores están descritos en [historial y anulación](VENTAS-HISTORIAL-ANULACION.md), [reportes](REPORTES-LINQ.md) y [seguridad](DIA-16-SEGURIDAD.md).
 
-## Entrega local de historial y seguridad
+## Seguridad y frontend servido por la API
 
-Responsable: José Luis Tincopa Paz. Rama: `feat/ventas-dia12`.
-
-Incluye historial por propietario y fechas peruanas, nota imprimible, anulación transaccional con reposición única, límites de login, errores API uniformes y Astro compilado servido por ASP.NET. Conserva el POS, recepción, stock y kardex integrados por el equipo.
-
-Verificación local del 27/11: regresión de 152 pruebas aprobadas, 0 fallidas y 4 omitidas, con concurrencia real de anulación en un esquema PostgreSQL temporal. Chrome de ventas pasó por separado. Astro check y build correctos; publish incluye wwwroot y dotnet run sirve frontend y API en un mismo puerto.
-
-No se realizó push ni se abrió un PR. La integración de estos nuevos commits y la ejecución remota de CI siguen pendientes. Los días sin evidencia de cierre en esta revisión conservan su estado anterior; no se afirma que nadie esté trabajando en ellos.
+Aporte de José Luis Tincopa Paz (rama `feat/ventas-dia12`), integrado solo en su parte de seguridad: límites de intentos de login, errores API uniformes con `traceId` y Astro compilado servido por ASP.NET en un mismo puerto. El historial, la nota y la anulación ya estaban integrados en `main`, por eso no se duplicaron.

@@ -12,7 +12,7 @@ public sealed class FrontendHostingTests
         Directory.CreateDirectory(root);
         try
         {
-            foreach (var route in new[] { "", "login", "ventas", "ventas/historial", "ventas/nota" })
+            foreach (var route in new[] { "", "login", "ventas", "historial", "nota" })
             {
                 var directory = Path.Combine(root, route);
                 Directory.CreateDirectory(directory);
@@ -23,7 +23,7 @@ public sealed class FrontendHostingTests
             using var factory = new SmokeFactory(webRoot: root);
             using var client = factory.CreateClient();
             factory.InitializeSchema();
-            foreach (var route in new[] { "/", "/login/", "/ventas/", "/ventas/historial/", "/ventas/nota/?id=1" })
+            foreach (var route in new[] { "/", "/login/", "/ventas/", "/historial/", "/nota/?id=1" })
             {
                 using var response = await client.GetAsync(route);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);

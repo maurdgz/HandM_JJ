@@ -64,5 +64,5 @@ Verificación específica: `dotnet test ../ImportNet.sln --configuration Release
 - [Día 07: compras, costos y contrato para recepción](ImportNet/docs/DIA-07-COMPRAS.md)
 - [Día 08: recepción e inventario](ImportNet/docs/DIA-08-RECEPCION-INVENTARIO.md)
 - [Día 09: ajustes y kardex](ImportNet/docs/DIA-09-AJUSTES-KARDEX.md)
-- [Día 12: historial, nota y anulación](ImportNet/docs/DIA-12-VENTAS.md)
+- [Historial, nota y anulación](ImportNet/docs/VENTAS-HISTORIAL-ANULACION.md)
 - [Día 16: seguridad y frontend servido por la API](ImportNet/docs/DIA-16-SEGURIDAD.md)
