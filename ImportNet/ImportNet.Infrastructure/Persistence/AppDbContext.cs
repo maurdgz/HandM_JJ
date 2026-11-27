@@ -70,6 +70,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.Property(x => x.MotivoAnulacion).HasMaxLength(300);
             e.HasIndex(x => x.Numero).IsUnique();
             e.HasIndex(x => x.Fecha);
+            // Reportes: ventas Registradas por periodo y resumen diario por vendedor.
+            e.HasIndex(x => new { x.Estado, x.Fecha }).HasDatabaseName("IX_Venta_EstadoFecha");
+            e.HasIndex(x => new { x.EmpleadoId, x.Fecha }).HasDatabaseName("IX_Venta_EmpleadoFecha");
             if (Database.IsNpgsql()) e.Property(x => x.Version).IsRowVersion();
             else e.Ignore(x => x.Version);
         });

@@ -21,6 +21,7 @@ internal sealed class UnitOfWork : IUnitOfWork
         Productos = new ProductoRepository(context);
         Inventarios = new InventarioRepository(context);
         Movimientos = new MovimientoRepository(context);
+        Reportes = new ReporteRepository(context);
         Ventas = new VentaRepository(context);
     }
 
@@ -32,6 +33,7 @@ internal sealed class UnitOfWork : IUnitOfWork
     public IProductoRepository Productos { get; }
     public IInventarioRepository Inventarios { get; }
     public IMovimientoRepository Movimientos { get; }
+    public IReporteRepository Reportes { get; }
     public IVentaRepository Ventas { get; }
 
     public async Task<int> Guardar(CancellationToken ct)
