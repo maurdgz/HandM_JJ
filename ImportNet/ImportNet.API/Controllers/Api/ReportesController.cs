@@ -36,4 +36,22 @@ public sealed class ReportesController(IMediator mediator) : ControllerBase
         [FromQuery] DateOnly? hasta = null,
         CancellationToken ct = default)
         => Ok(await mediator.Send(new VentasPorVendedorQuery(desde, hasta), ct));
+
+    /// <param name="top">Entre 1 y 50; por defecto 10.</param>
+    [HttpGet("top-productos")]
+    [ProducesResponseType(typeof(IReadOnlyList<TopProducto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> TopProductos(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        [FromQuery] int top = 10,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new TopProductosQuery(desde, hasta, top), ct));
+
+    [HttpGet("margen-productos")]
+    [ProducesResponseType(typeof(IReadOnlyList<MargenProducto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> MargenProductos(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new MargenPorProductoQuery(desde, hasta), ct));
 }

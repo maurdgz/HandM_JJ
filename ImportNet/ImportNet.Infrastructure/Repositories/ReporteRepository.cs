@@ -75,4 +75,92 @@ internal sealed class ReporteRepository(AppDbContext db) : IReporteRepository
             .ThenBy(x => x.Vendedor, StringComparer.Ordinal)
             .ToArray();
     }
+
+    private async Task<IReadOnlyList<LineaVendida>> LineasVendidas(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct)
+        => await (
+            from venta in VentasRegistradas(desdeUtc, hastaUtc)
+            join detalle in db.Set<DetalleVenta>().AsNoTracking()
+                on venta.Id equals detalle.VentaId
+            join producto in db.Set<Producto>().AsNoTracking()
+                on detalle.ProductoId equals producto.Id
+            select new LineaVendida(
+                producto.Id,
+                producto.Codigo,
+                producto.Nombre,
+                producto.UnidadMedida,
+                producto.CostoPromedio,
+                detalle.Cantidad,
+                detalle.Subtotal))
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<TopProducto>> TopProductos(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int top,
+        CancellationToken ct)
+    {
+        var lineas = await LineasVendidas(desdeUtc, hastaUtc, ct);
+
+        return lineas
+            .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.UnidadMedida })
+            .Select(g => new TopProducto(
+                g.Key.ProductoId,
+                g.Key.Codigo,
+                g.Key.Nombre,
+                g.Key.UnidadMedida,
+                g.Sum(x => x.Cantidad),
+                g.Sum(x => x.Subtotal)))
+            .OrderByDescending(x => x.Cantidad)
+            .ThenByDescending(x => x.Total)
+            .ThenBy(x => x.ProductoId)
+            .Take(top)
+            .ToArray();
+    }
+
+    public async Task<IReadOnlyList<MargenProducto>> MargenPorProducto(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct)
+    {
+        var lineas = await LineasVendidas(desdeUtc, hastaUtc, ct);
+
+        return lineas
+            .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.CostoPromedio })
+            .Select(g =>
+            {
+                var cantidad = g.Sum(x => x.Cantidad);
+                var ingreso = g.Sum(x => x.Subtotal);
+                var costo = decimal.Round(cantidad * g.Key.CostoPromedio, 2, MidpointRounding.AwayFromZero);
+                var margen = ingreso - costo;
+                var porcentaje = ingreso == 0
+                    ? 0m
+                    : decimal.Round(margen / ingreso * 100, 2, MidpointRounding.AwayFromZero);
+
+                return new MargenProducto(
+                    g.Key.ProductoId,
+                    g.Key.Codigo,
+                    g.Key.Nombre,
+                    cantidad,
+                    ingreso,
+                    g.Key.CostoPromedio,
+                    costo,
+                    margen,
+                    porcentaje);
+            })
+            .OrderByDescending(x => x.Margen)
+            .ThenBy(x => x.ProductoId)
+            .ToArray();
+    }
+
+    private sealed record LineaVendida(
+        int ProductoId,
+        string Codigo,
+        string Nombre,
+        string UnidadMedida,
+        decimal CostoPromedio,
+        decimal Cantidad,
+        decimal Subtotal);
 }

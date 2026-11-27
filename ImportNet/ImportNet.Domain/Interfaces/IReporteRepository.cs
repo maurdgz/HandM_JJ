@@ -18,4 +18,17 @@ public interface IReporteRepository
         DateTime desdeUtc,
         DateTime hastaUtc,
         CancellationToken ct);
+
+    /// <summary>Productos más vendidos por cantidad.</summary>
+    Task<IReadOnlyList<TopProducto>> TopProductos(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int top,
+        CancellationToken ct);
+
+    /// <summary>Margen por producto vendido, de mayor a menor margen.</summary>
+    Task<IReadOnlyList<MargenProducto>> MargenPorProducto(
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        CancellationToken ct);
 }
