@@ -70,3 +70,11 @@ Base PostgreSQL nueva con la migración aplicada y la API levantada. Datos:
 
 - Pruebas automáticas de reportes con datos sembrados (quedan para el QA).
 - Pantallas de reportes y exportación a Excel (issue #15).
+
+## Integración del dashboard (Día 15, issue #16)
+
+- `GET /api/reportes/dashboard`: KPI administrativos de hoy/mes en PEN, ticket, margen al costo vigente y conteos de inventario. Protegido en controlador y handler; el Vendedor utiliza únicamente `mi-resumen`.
+- PostgreSQL ejecuta ahora `GroupBy`, `Sum`, `Count`, orden y límite de ventas por periodo, vendedores y top en el servidor. Margen agrupa en servidor y redondea por producto como antes. Se mantiene la alternativa SQLite para las pruebas existentes.
+- Los tres agregados del KPI comparten una transacción de lectura RepeatableRead para evitar diferencias si se registra una venta durante la consulta. Sin cambios al esquema ni al contrato de los reportes anteriores.
+- `DashboardTests` y `DashboardPostgreSqlTests` verifican las agregaciones, anuladas, descuentos y fronteras UTC-5. La navegación y los permisos se validan con Chrome contra PostgreSQL aislado.
+- La pantalla de Inicio usa estos reportes; la issue #15 conserva su alcance de pantallas de reportes y exportación.

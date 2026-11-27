@@ -16,10 +16,10 @@ Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10�
 | 10 | 18/11 | José Carlos Vitorino | QA intermedio: compras, inventario y roles | Pendiente |
 | 11 | 19/11 | Mauricio Rodríguez | Punto de venta (POS) | Integrado en main mediante PR #9 |
 | 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Implementado y probado localmente; pendiente de push y PR |
-| 13 | 21/11 | Huber Lope | Reportes con LINQ | Pendiente |
+| 13 | 21/11 | Huber Lope | Reportes con LINQ | Integrado en main mediante PR #20 |
 | 14 | 22/11 | José Carlos Vitorino | Pantallas de reportes y exportación a Excel | Pendiente |
 | 15 | 23/11 | Mauricio Rodríguez | Dashboard con gráficos | Pendiente |
-| 16 | 24/11 | José Luis Tincopa | Endurecimiento de seguridad y frontend servido por la API | Implementado y probado localmente; pendiente de push y PR |
+| 16 | 24/11 | José Luis Tincopa | Endurecimiento de seguridad y frontend servido por la API | Integrado en main mediante PR #22 |
 | 17 | 25/11 | Huber Lope | Datos semilla y despliegue local | Pendiente |
 | 18 | 26/11 | José Carlos Vitorino | QA de cierre y versión candidata | Pendiente |
 
