@@ -10,6 +10,11 @@ internal sealed class DashboardRepository(AppDbContext db) : IDashboardRepositor
     public async Task<ResumenDashboard> Resumen(DateOnly fecha, DateTime inicioDiaUtc,
         DateTime finDiaUtc, DateTime inicioMesUtc, CancellationToken ct)
     {
+        // Los tres agregados deben observar la misma versión aunque se registre una venta al consultarlos.
+        await using var snapshot = db.Database.CurrentTransaction is null
+            ? await db.Database.BeginTransactionAsync(db.Database.IsNpgsql()
+                ? System.Data.IsolationLevel.RepeatableRead : System.Data.IsolationLevel.Serializable, ct)
+            : null;
         var ventas = db.Set<Venta>().AsNoTracking().Where(x => x.Estado == EstadoVenta.Registrada
             && x.Fecha >= inicioMesUtc && x.Fecha < finDiaUtc);
         var importes = ventas.Select(x => new { x.Fecha, x.Total });
@@ -40,11 +45,13 @@ internal sealed class DashboardRepository(AppDbContext db) : IDashboardRepositor
                     select new { producto.StockMinimo, Cantidad = inventario == null ? 0m : inventario.Cantidad };
         var inventarioResumen = await stock.GroupBy(x => 1).Select(g => new InventarioResumen(
             g.Count(), g.Count(x => x.Cantidad <= x.StockMinimo), g.Count(x => x.Cantidad == 0))).SingleOrDefaultAsync(ct);
-        return new(fecha, totales?.Hoy ?? 0, totales?.CantidadHoy ?? 0, totales?.Mes ?? 0,
+        var resultado = new ResumenDashboard(fecha, totales?.Hoy ?? 0, totales?.CantidadHoy ?? 0, totales?.Mes ?? 0,
             totales?.CantidadMes ?? 0, totales is { CantidadMes: > 0 }
                 ? decimal.Round(totales.Mes / totales.CantidadMes, 2, MidpointRounding.AwayFromZero) : 0,
             margenes.Sum(x => x.Ingreso - decimal.Round(x.Costo, 2, MidpointRounding.AwayFromZero)),
             inventarioResumen?.Activos ?? 0, inventarioResumen?.BajoMinimo ?? 0, inventarioResumen?.SinStock ?? 0);
+        if (snapshot is not null) await snapshot.CommitAsync(ct);
+        return resultado;
     }
 
     private sealed record Totales(decimal Hoy, int CantidadHoy, decimal Mes, int CantidadMes);
