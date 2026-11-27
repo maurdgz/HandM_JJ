@@ -15,6 +15,8 @@ import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
 import HistorialVentasPage from "@/components/HistorialVentasPage";
 import NotaVentaPage from "@/components/NotaVentaPage";
+import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import VendedorDashboard from "@/components/dashboard/VendedorDashboard";
 
 export type AppView =
   | "ventas"
@@ -157,15 +159,7 @@ export default function AppShell({ view }: Props) {
 
       <main className="min-w-0 p-4 md:p-8 print:p-0">
         {view === "inicio" && (
-          <>
-            <h1 className="text-2xl font-semibold">
-              Bienvenido, {user.nombre}
-            </h1>
-
-            <p className="mt-3 text-slate-600">
-              Selecciona una opción del menú.
-            </p>
-          </>
+          isAdmin ? <AdminDashboard /> : <VendedorDashboard />
         )}
 
         {view === "compras" && (
