@@ -1,6 +1,6 @@
 # ImportNet
 
-Sistema para una tienda importadora: empleados y roles, catálogo, compras, inventario, POS, historial y anulación de ventas con autenticación JWT.
+Sistema para una tienda importadora: empleados y roles, catálogo, compras, inventario, POS, historial, anulación de ventas y dashboard por rol con autenticación JWT.
 
 **Stack:** ASP.NET Core Web API .NET 10, PostgreSQL (EF Core + Npgsql), MediatR, arquitectura hexagonal (Domain, Application, Infrastructure, API) y xUnit. Frontend: Astro + TypeScript + Tailwind con islas React y shadcn/ui.
 
@@ -58,6 +58,7 @@ Verificación específica: `dotnet test ../ImportNet.sln --configuration Release
 
 ## Documentación
 
+- [Día 15: dashboard, indicadores, pruebas y entrega](ImportNet/docs/DIA-15-DASHBOARD.md)
 - [Estado y desviaciones del plan](ImportNet/docs/ESTADO.md)
 - [Decisiones vigentes](ImportNet/docs/DECISIONES.md)
 - [Prueba manual y endpoints](ImportNet/docs/PRUEBA-MANUAL.md)

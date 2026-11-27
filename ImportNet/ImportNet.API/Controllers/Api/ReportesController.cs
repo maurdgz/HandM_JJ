@@ -19,6 +19,13 @@ namespace ImportNet.API.Controllers.Api;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 public sealed class ReportesController(IMediator mediator) : ControllerBase
 {
+    /// <summary>KPI de hoy y del mes hasta hoy (Perú), netos en PEN. Solo Administrador.</summary>
+    [HttpGet("dashboard")]
+    [Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(ResumenDashboard), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Dashboard(CancellationToken ct)
+        => Ok(await mediator.Send(new ResumenDashboardQuery(), ct));
+
     /// <param name="agrupacion">Dia o Mes.</param>
     [HttpGet("ventas-por-periodo")]
     [Authorize(Policy = "Administracion")]

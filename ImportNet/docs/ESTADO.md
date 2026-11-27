@@ -1,6 +1,6 @@
 ﻿# Estado
 
-Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10–26/11/2026). Estado de la rama local `feat/ventas-dia12`, integrada con main hasta `58d4502`; los nuevos commits de Días 12 y 16 aún no se enviaron a GitHub.
+Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10–26/11/2026). Main verificado por fetch en `bbe7ebb`; Día 15 en `feat/dia-15-dashboard`, PR #23. Los estados de integración reflejan el historial disponible en GitHub.
 
 | Día | Fecha | Responsable | Módulo | Estado |
 | --- | --- | --- | --- | --- |
@@ -15,11 +15,11 @@ Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10�
 | 09 | 17/11 | Huber Lope | Ajustes de inventario y kardex | Integrado en main mediante PR #12 |
 | 10 | 18/11 | José Carlos Vitorino | QA intermedio: compras, inventario y roles | Pendiente |
 | 11 | 19/11 | Mauricio Rodríguez | Punto de venta (POS) | Integrado en main mediante PR #9 |
-| 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Implementado y probado localmente; pendiente de push y PR |
-| 13 | 21/11 | Huber Lope | Reportes con LINQ | Pendiente |
+| 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Integrado en main mediante PR #19 |
+| 13 | 21/11 | Huber Lope | Reportes con LINQ | Integrado en main mediante PR #20 |
 | 14 | 22/11 | José Carlos Vitorino | Pantallas de reportes y exportación a Excel | Pendiente |
 | 15 | 23/11 | Mauricio Rodríguez | Dashboard con gráficos | Pendiente |
-| 16 | 24/11 | José Luis Tincopa | Endurecimiento de seguridad y frontend servido por la API | Implementado y probado localmente; pendiente de push y PR |
+| 16 | 24/11 | José Luis Tincopa | Endurecimiento de seguridad y frontend servido por la API | Integrado en main mediante PR #22 |
 | 17 | 25/11 | Huber Lope | Datos semilla y despliegue local | Pendiente |
 | 18 | 26/11 | José Carlos Vitorino | QA de cierre y versión candidata | Pendiente |
 

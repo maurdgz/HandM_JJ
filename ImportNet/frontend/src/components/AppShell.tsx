@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { getToken, logout, saveUser } from "@/lib/session";
@@ -15,6 +15,10 @@ import KardexPage from "@/components/KardexPage";
 import StockPage from "@/components/StockPage";
 import HistorialVentasPage from "@/components/HistorialVentasPage";
 import NotaVentaPage from "@/components/NotaVentaPage";
+import VendedorDashboard from "@/components/dashboard/VendedorDashboard";
+import { DashboardLoading } from "@/components/dashboard/DashboardStates";
+
+const AdminDashboard = lazy(() => import("@/components/dashboard/AdminDashboard"));
 
 export type AppView =
   | "ventas"
@@ -157,15 +161,7 @@ export default function AppShell({ view }: Props) {
 
       <main className="min-w-0 p-4 md:p-8 print:p-0">
         {view === "inicio" && (
-          <>
-            <h1 className="text-2xl font-semibold">
-              Bienvenido, {user.nombre}
-            </h1>
-
-            <p className="mt-3 text-slate-600">
-              Selecciona una opción del menú.
-            </p>
-          </>
+          isAdmin ? <Suspense fallback={<DashboardLoading />}><AdminDashboard /></Suspense> : <VendedorDashboard />
         )}
 
         {view === "compras" && (
