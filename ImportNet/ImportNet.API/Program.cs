@@ -17,6 +17,7 @@ builder.Services.AddAuthorization(o => {
     o.AddPolicy("Ventas", p => p.RequireRole("Administrador", "Vendedor"));
 });
 builder.Services.AddProblemDetails();
+builder.Services.AddLoginRateLimiting();
 builder.Services.AddExceptionHandler<ErroresHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o => {
@@ -62,6 +63,7 @@ if (app.Environment.IsDevelopment())
 }
 else { app.UseHsts(); app.UseHttpsRedirection(); }
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
