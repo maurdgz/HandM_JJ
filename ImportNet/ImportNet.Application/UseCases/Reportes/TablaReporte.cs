@@ -21,9 +21,15 @@ public sealed record ObtenerTablaReporteQuery(
     int Top,
     DateOnly? Fecha) : IRequest<TablaReporte>;
 
-internal sealed class ObtenerTablaReporteQueryHandler(IMediator mediator)
-    : IRequestHandler<ObtenerTablaReporteQuery, TablaReporte>
+internal sealed class ObtenerTablaReporteQueryHandler : IRequestHandler<ObtenerTablaReporteQuery, TablaReporte>
 {
+    private readonly IMediator mediator;
+
+    public ObtenerTablaReporteQueryHandler(IMediator mediator)
+    {
+        this.mediator = mediator;
+    }
+
     public Task<TablaReporte> Handle(ObtenerTablaReporteQuery r, CancellationToken ct) => r.Reporte switch
     {
         "ventas-por-periodo" => VentasPorPeriodo(r, ct),

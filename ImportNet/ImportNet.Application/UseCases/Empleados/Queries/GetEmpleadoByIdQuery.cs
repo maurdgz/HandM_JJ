@@ -1,15 +1,31 @@
-using MediatR;
 using ImportNet.Application.Security;
 using ImportNet.Domain.Entities;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Empleados.Queries;
 
 public sealed record GetEmpleadoByIdQuery(int Id) : IRequest<EmpleadoDto>;
-internal sealed class GetEmpleadoByIdQueryHandler(IAdministracionEmpleados empleados, IUsuarioActual usuario) : IRequestHandler<GetEmpleadoByIdQuery, EmpleadoDto>
+
+internal sealed class GetEmpleadoByIdQueryHandler : IRequestHandler<GetEmpleadoByIdQuery, EmpleadoDto>
 {
-    public async Task<EmpleadoDto> Handle(GetEmpleadoByIdQuery r, CancellationToken ct)
+    private readonly IAdministracionEmpleados _empleados;
+    private readonly IUsuarioActual _usuario;
+
+    public GetEmpleadoByIdQueryHandler(IAdministracionEmpleados empleados, IUsuarioActual usuario)
     {
-        await usuario.ExigirAdministrador(ct);
-        EmpleadoReglas.ValidarId(r.Id);
-        return await empleados.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Empleado no encontrado.");
+        _empleados = empleados;
+        _usuario = usuario;
+    }
+
+    public async Task<EmpleadoDto> Handle(GetEmpleadoByIdQuery request, CancellationToken cancellationToken)
+    {
+        await _usuario.ExigirAdministrador(cancellationToken);
+        EmpleadoReglas.ValidarId(request.Id);
+
+        var empleado = await _empleados.Obtener(request.Id, cancellationToken);
+        if (empleado == null)
+            throw new NoEncontradoException("Empleado no encontrado.");
+
+        return empleado;
     }
 }

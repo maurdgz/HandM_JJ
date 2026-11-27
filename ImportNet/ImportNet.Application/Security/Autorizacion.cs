@@ -1,32 +1,44 @@
+using ImportNet.Domain.Entities;
+using ImportNet.Domain.Interfaces;
+
 namespace ImportNet.Application.Security;
 
 public static class RolesImportNet
 {
     public const string Administrador = "Administrador";
     public const string Vendedor = "Vendedor";
-    public static IReadOnlyList<string> Todos { get; } = Array.AsReadOnly(new[] { Administrador, Vendedor });
+    public static IReadOnlyList<string> Todos { get; } = [Administrador, Vendedor];
 }
 
 public interface IUsuarioActual
 {
     string? Id { get; }
     Task ExigirAdministrador(CancellationToken ct);
+    Task<bool> EsAdministrador(CancellationToken ct);
+}
 
-    async Task<bool> EsAdministrador(CancellationToken ct)
+public sealed class AccesoNoPermitidoException : Exception
+{
+    public int Status { get; }
+
+    public AccesoNoPermitidoException(int status)
+        : base(status == 401 ? "Debe iniciar sesión." : "Requiere un administrador activo.")
     {
-        try
-        {
-            await ExigirAdministrador(ct);
-            return true;
-        }
-        catch (AccesoNoPermitidoException ex) when (ex.Status == 403)
-        {
-            return false;
-        }
+        Status = status;
     }
 }
 
-public sealed class AccesoNoPermitidoException(int status) : Exception(status == 401 ? "Debe iniciar sesión." : "Requiere un administrador activo.")
+public static class EmpleadoActualExtensions
 {
-    public int Status { get; } = status;
+    public static async Task<Empleado> ObtenerEmpleadoActivo(this IEmpleadoRepository empleados, IUsuarioActual usuario, CancellationToken ct)
+    {
+        if (usuario.Id == null)
+            throw new AccesoNoPermitidoException(401);
+
+        var empleado = await empleados.ObtenerPorUsuario(usuario.Id, ct);
+        if (empleado == null || !empleado.Activo)
+            throw new AccesoNoPermitidoException(403);
+
+        return empleado;
+    }
 }

@@ -9,21 +9,30 @@ namespace ImportNet.API.Controllers.Api;
 [Route("api/reportes/{reporte}")]
 [Authorize(Policy = "Administracion")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class TablasReporteController(IMediator mediator, IExportadorExcel exportador) : ControllerBase
+public class TablasReporteController : ControllerBase
 {
-    [HttpGet("tabla")]
-    public Task<TablaReporte> Tabla(
-        string reporte, DateOnly? desde, DateOnly? hasta, DateOnly? fecha,
-        string agrupacion = "Dia", int top = 10, CancellationToken ct = default)
-        => mediator.Send(new ObtenerTablaReporteQuery(reporte, desde, hasta, agrupacion, top, fecha), ct);
+    private readonly IMediator _mediator;
+    private readonly IExportadorExcel _exportador;
 
-    [HttpGet("excel")]
-    public async Task<IActionResult> Excel(
-        string reporte, DateOnly? desde, DateOnly? hasta, DateOnly? fecha,
+    public TablasReporteController(IMediator mediator, IExportadorExcel exportador)
+    {
+        _mediator = mediator;
+        _exportador = exportador;
+    }
+
+    [HttpGet("tabla")]
+    public async Task<IActionResult> Tabla(string reporte, DateOnly? desde, DateOnly? hasta, DateOnly? fecha,
         string agrupacion = "Dia", int top = 10, CancellationToken ct = default)
     {
-        var tabla = await mediator.Send(new ObtenerTablaReporteQuery(reporte, desde, hasta, agrupacion, top, fecha), ct);
-        return File(exportador.Exportar(tabla, ct),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", tabla.NombreArchivo + ".xlsx");
+        return Ok(await _mediator.Send(new ObtenerTablaReporteQuery(reporte, desde, hasta, agrupacion, top, fecha), ct));
+    }
+
+    [HttpGet("excel")]
+    public async Task<IActionResult> Excel(string reporte, DateOnly? desde, DateOnly? hasta, DateOnly? fecha,
+        string agrupacion = "Dia", int top = 10, CancellationToken ct = default)
+    {
+        var tabla = await _mediator.Send(new ObtenerTablaReporteQuery(reporte, desde, hasta, agrupacion, top, fecha), ct);
+        var archivo = _exportador.Exportar(tabla, ct);
+        return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", tabla.NombreArchivo + ".xlsx");
     }
 }

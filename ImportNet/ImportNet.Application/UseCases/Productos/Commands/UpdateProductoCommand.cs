@@ -1,21 +1,39 @@
-using MediatR;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Productos.Commands;
-public sealed record UpdateProductoCommand(int Id, string Codigo, string Nombre, string? Descripcion, string UnidadMedida, decimal? Peso, decimal PrecioVenta, string? PartidaArancelaria, int CategoriaId, decimal StockMinimo,
+
+public sealed record UpdateProductoCommand(int Id, string Codigo, string Nombre, string? Descripcion, string UnidadMedida, decimal? Peso,
+    decimal PrecioVenta, string? PartidaArancelaria, int CategoriaId, decimal StockMinimo,
     decimal? CostoImportacionUsd = null, decimal? TipoCambioImportacion = null) : IRequest<Unit>;
-internal sealed class UpdateProductoCommandHandler(IUnitOfWork uow) : IRequestHandler<UpdateProductoCommand, Unit>
+
+internal sealed class UpdateProductoCommandHandler : IRequestHandler<UpdateProductoCommand, Unit>
 {
-    public async Task<Unit> Handle(UpdateProductoCommand r, CancellationToken ct)
+    private readonly IUnitOfWork _unitOfWork;
+
+    public UpdateProductoCommandHandler(IUnitOfWork unitOfWork)
     {
-        var entidad = await uow.Productos.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Producto no encontrado.");
-        entidad.Editar(r.Codigo, r.Nombre, r.Descripcion, r.UnidadMedida, r.Peso, r.PrecioVenta, r.PartidaArancelaria, r.CategoriaId, r.StockMinimo);
-        entidad.RegistrarCostoImportacion(r.CostoImportacionUsd, r.TipoCambioImportacion);
-        if (!await uow.Categorias.Existe(r.CategoriaId, ct))
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<Unit> Handle(UpdateProductoCommand request, CancellationToken cancellationToken)
+    {
+        var producto = await _unitOfWork.Productos.Obtener(request.Id, cancellationToken);
+        if (producto == null)
+            throw new NoEncontradoException("Producto no encontrado.");
+
+        producto.Editar(request.Codigo, request.Nombre, request.Descripcion, request.UnidadMedida, request.Peso,
+            request.PrecioVenta, request.PartidaArancelaria, request.CategoriaId, request.StockMinimo);
+        producto.RegistrarCostoImportacion(request.CostoImportacionUsd, request.TipoCambioImportacion);
+
+        if (!await _unitOfWork.Categorias.Existe(request.CategoriaId, cancellationToken))
             throw new ReglaNegocioException("La categoría no existe.");
-        if (await uow.Productos.ExisteCodigo(entidad.Codigo, entidad.Id, ct))
+
+        if (await _unitOfWork.Productos.ExisteCodigo(producto.Codigo, producto.Id, cancellationToken))
             throw new ConflictoException("Ya existe un producto con ese código.");
-        await uow.Guardar(ct);
+
+        await _unitOfWork.Guardar(cancellationToken);
         return Unit.Value;
     }
 }

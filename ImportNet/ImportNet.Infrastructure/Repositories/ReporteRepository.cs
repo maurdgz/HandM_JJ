@@ -5,304 +5,256 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-/// <remarks>
-/// El filtro, los joins y la proyección se ejecutan en la base. SQLite (pruebas) no suma decimales
-/// en el servidor, así que GroupBy/Sum/OrderByDescending/Take se aplican sobre las filas proyectadas,
-/// igual que el saldo del kardex.
-/// </remarks>
-internal sealed partial class ReporteRepository(AppDbContext db) : IReporteRepository
+internal sealed class ReporteRepository : IReporteRepository
 {
-    // Perú no usa horario de verano.
     private static readonly TimeSpan HoraPeru = TimeSpan.FromHours(-5);
 
-    private IQueryable<Venta> VentasRegistradas(DateTime desdeUtc, DateTime hastaUtc)
-        => db.Set<Venta>()
-            .AsNoTracking()
-            .Where(x => x.Estado == EstadoVenta.Registrada
-                && x.Fecha >= desdeUtc
-                && x.Fecha < hastaUtc);
+    private readonly AppDbContext _context;
 
-    public async Task<IReadOnlyList<VentasPorPeriodo>> VentasPorPeriodo(
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        AgrupacionPeriodo agrupacion,
-        CancellationToken ct)
+    public ReporteRepository(AppDbContext context)
     {
-        if (db.Database.IsNpgsql())
-            return await VentasPorPeriodoPostgres(desdeUtc, hastaUtc, agrupacion, ct);
+        _context = context;
+    }
 
-        var filas = await VentasRegistradas(desdeUtc, hastaUtc)
-            .Select(x => new { x.Fecha, x.Total })
+    private IQueryable<Venta> VentasRegistradas(DateTime desdeUtc, DateTime hastaUtc)
+    {
+        return _context.Set<Venta>()
+            .AsNoTracking()
+            .Where(v => v.Estado == EstadoVenta.Registrada && v.Fecha >= desdeUtc && v.Fecha < hastaUtc);
+    }
+
+    private IQueryable<DetalleVenta> DetallesVendidos(DateTime desdeUtc, DateTime hastaUtc)
+    {
+        return _context.Set<DetalleVenta>()
+            .AsNoTracking()
+            .Where(d => d.Venta.Estado == EstadoVenta.Registrada && d.Venta.Fecha >= desdeUtc && d.Venta.Fecha < hastaUtc);
+    }
+
+    private static decimal Redondear(decimal valor)
+    {
+        return decimal.Round(valor, 2, MidpointRounding.AwayFromZero);
+    }
+
+    public async Task<List<VentasPorPeriodo>> VentasPorPeriodo(DateTime desdeUtc, DateTime hastaUtc,
+        AgrupacionPeriodo agrupacion, CancellationToken ct)
+    {
+        var ventas = await VentasRegistradas(desdeUtc, hastaUtc)
+            .Select(v => new { v.Fecha, v.Total })
             .ToListAsync(ct);
 
         var formato = agrupacion == AgrupacionPeriodo.Mes ? "yyyy-MM" : "yyyy-MM-dd";
 
-        return filas
-            .GroupBy(x => (x.Fecha + HoraPeru).ToString(formato))
-            .Select(g => new VentasPorPeriodo(g.Key, g.Count(), g.Sum(x => x.Total)))
+        return ventas
+            .GroupBy(v => (v.Fecha + HoraPeru).ToString(formato))
+            .Select(g => new VentasPorPeriodo(g.Key, g.Count(), g.Sum(v => v.Total)))
             .OrderBy(x => x.Periodo, StringComparer.Ordinal)
-            .ToArray();
+            .ToList();
     }
 
-    public async Task<IReadOnlyList<VentasPorVendedor>> VentasPorVendedor(
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        CancellationToken ct)
+    public async Task<List<VentasPorVendedor>> VentasPorVendedor(DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
     {
-        if (db.Database.IsNpgsql())
-            return await VentasPorVendedorPostgres(desdeUtc, hastaUtc, ct);
-
-        var filas = await (
-            from venta in VentasRegistradas(desdeUtc, hastaUtc)
-            join empleado in db.Set<Empleado>().AsNoTracking()
-                on venta.EmpleadoId equals empleado.Id
-            select new
+        var grupos = await VentasRegistradas(desdeUtc, hastaUtc)
+            .GroupBy(v => new { v.EmpleadoId, v.Empleado.Nombre, v.Empleado.Apellidos })
+            .Select(g => new
             {
-                venta.EmpleadoId,
-                Vendedor = empleado.Nombre + " " + empleado.Apellidos,
-                venta.Total
+                g.Key.EmpleadoId,
+                g.Key.Nombre,
+                g.Key.Apellidos,
+                Ventas = g.Count(),
+                Total = g.Sum(v => v.Total)
             })
             .ToListAsync(ct);
 
-        return filas
-            .GroupBy(x => new { x.EmpleadoId, x.Vendedor })
-            .Select(g =>
-            {
-                var total = g.Sum(x => x.Total);
-                var ventas = g.Count();
-                return new VentasPorVendedor(
-                    g.Key.EmpleadoId,
-                    g.Key.Vendedor.Trim(),
-                    ventas,
-                    total,
-                    decimal.Round(total / ventas, 2, MidpointRounding.AwayFromZero));
-            })
+        return grupos
+            .Select(g => new VentasPorVendedor(
+                g.EmpleadoId,
+                (g.Nombre + " " + g.Apellidos).Trim(),
+                g.Ventas,
+                g.Total,
+                Redondear(g.Total / g.Ventas)))
             .OrderByDescending(x => x.Total)
             .ThenBy(x => x.Vendedor, StringComparer.Ordinal)
-            .ToArray();
+            .ToList();
     }
 
-    private async Task<IReadOnlyList<LineaVendida>> LineasVendidas(
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        CancellationToken ct)
-        => await (
-            from venta in VentasRegistradas(desdeUtc, hastaUtc)
-            join detalle in db.Set<DetalleVenta>().AsNoTracking()
-                on venta.Id equals detalle.VentaId
-            join producto in db.Set<Producto>().AsNoTracking()
-                on detalle.ProductoId equals producto.Id
-            select new LineaVendida(
-                producto.Id,
-                producto.Codigo,
-                producto.Nombre,
-                producto.UnidadMedida,
-                producto.CostoPromedio,
-                detalle.Cantidad,
-                detalle.Subtotal))
-            .ToListAsync(ct);
-
-    public async Task<IReadOnlyList<TopProducto>> TopProductos(
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        int top,
-        CancellationToken ct)
+    public async Task<List<TopProducto>> TopProductos(DateTime desdeUtc, DateTime hastaUtc, int top, CancellationToken ct)
     {
-        if (db.Database.IsNpgsql())
-            return await TopProductosPostgres(desdeUtc, hastaUtc, top, ct);
-
-        var lineas = await LineasVendidas(desdeUtc, hastaUtc, ct);
-
-        return lineas
-            .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.UnidadMedida })
-            .Select(g => new TopProducto(
+        var grupos = await DetallesVendidos(desdeUtc, hastaUtc)
+            .GroupBy(d => new { d.ProductoId, d.Producto.Codigo, d.Producto.Nombre, d.Producto.UnidadMedida })
+            .Select(g => new
+            {
                 g.Key.ProductoId,
                 g.Key.Codigo,
                 g.Key.Nombre,
                 g.Key.UnidadMedida,
-                g.Sum(x => x.Cantidad),
-                g.Sum(x => x.Subtotal)))
+                Cantidad = g.Sum(d => d.Cantidad),
+                Total = g.Sum(d => d.Subtotal)
+            })
+            .ToListAsync(ct);
+
+        return grupos
+            .Select(g => new TopProducto(g.ProductoId, g.Codigo, g.Nombre, g.UnidadMedida, g.Cantidad, g.Total))
             .OrderByDescending(x => x.Cantidad)
             .ThenByDescending(x => x.Total)
             .ThenBy(x => x.ProductoId)
             .Take(top)
-            .ToArray();
+            .ToList();
     }
 
-    public async Task<IReadOnlyList<MargenProducto>> MargenPorProducto(
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        CancellationToken ct)
+    public async Task<List<MargenProducto>> MargenPorProducto(DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
     {
-        if (db.Database.IsNpgsql())
-            return await MargenPorProductoPostgres(desdeUtc, hastaUtc, ct);
-
-        var lineas = await LineasVendidas(desdeUtc, hastaUtc, ct);
-
-        return lineas
-            .GroupBy(x => new { x.ProductoId, x.Codigo, x.Nombre, x.CostoPromedio })
-            .Select(g =>
+        var grupos = await DetallesVendidos(desdeUtc, hastaUtc)
+            .GroupBy(d => new { d.ProductoId, d.Producto.Codigo, d.Producto.Nombre, d.Producto.CostoPromedio })
+            .Select(g => new
             {
-                var cantidad = g.Sum(x => x.Cantidad);
-                var ingreso = g.Sum(x => x.Subtotal);
-                var costo = decimal.Round(cantidad * g.Key.CostoPromedio, 2, MidpointRounding.AwayFromZero);
-                var margen = ingreso - costo;
-                var porcentaje = ingreso == 0
-                    ? 0m
-                    : decimal.Round(margen / ingreso * 100, 2, MidpointRounding.AwayFromZero);
-
-                return new MargenProducto(
-                    g.Key.ProductoId,
-                    g.Key.Codigo,
-                    g.Key.Nombre,
-                    cantidad,
-                    ingreso,
-                    g.Key.CostoPromedio,
-                    costo,
-                    margen,
-                    porcentaje);
+                g.Key.ProductoId,
+                g.Key.Codigo,
+                g.Key.Nombre,
+                g.Key.CostoPromedio,
+                Cantidad = g.Sum(d => d.Cantidad),
+                Ingreso = g.Sum(d => d.Subtotal)
             })
+            .ToListAsync(ct);
+
+        var resultado = new List<MargenProducto>();
+
+        foreach (var g in grupos)
+        {
+            var costo = Redondear(g.Cantidad * g.CostoPromedio);
+            var margen = g.Ingreso - costo;
+            var porcentaje = g.Ingreso == 0 ? 0m : Redondear(margen / g.Ingreso * 100);
+
+            resultado.Add(new MargenProducto(g.ProductoId, g.Codigo, g.Nombre, g.Cantidad, g.Ingreso,
+                g.CostoPromedio, costo, margen, porcentaje));
+        }
+
+        return resultado
             .OrderByDescending(x => x.Margen)
             .ThenBy(x => x.ProductoId)
-            .ToArray();
+            .ToList();
     }
 
-    public async Task<IReadOnlyList<ProductoStockBajo>> StockBajoMinimo(CancellationToken ct)
+    public async Task<List<ProductoStockBajo>> StockBajoMinimo(CancellationToken ct)
     {
-        var filas = await (
-            from producto in db.Set<Producto>().AsNoTracking()
-            join inventario in db.Set<Inventario>().AsNoTracking()
-                    .Where(x => x.AlmacenId == Almacen.PrincipalId)
-                on producto.Id equals inventario.ProductoId into existencias
-            from inventario in existencias.DefaultIfEmpty()
-            where producto.Activo
-            select new
+        var productos = await _context.Set<Producto>()
+            .AsNoTracking()
+            .Where(p => p.Activo)
+            .Select(p => new
             {
-                producto.Id,
-                producto.Codigo,
-                producto.Nombre,
-                producto.UnidadMedida,
-                producto.StockMinimo,
-                Stock = inventario == null ? 0m : inventario.Cantidad
+                p.Id,
+                p.Codigo,
+                p.Nombre,
+                p.UnidadMedida,
+                p.StockMinimo,
+                Stock = p.Inventarios.Where(i => i.AlmacenId == Almacen.PrincipalId).Sum(i => i.Cantidad)
             })
-            .Where(x => x.Stock <= x.StockMinimo)
+            .Where(p => p.Stock <= p.StockMinimo)
             .ToListAsync(ct);
 
-        return filas
-            .Select(x => new ProductoStockBajo(
-                x.Id,
-                x.Codigo,
-                x.Nombre,
-                x.UnidadMedida,
-                x.Stock,
-                x.StockMinimo,
-                x.StockMinimo - x.Stock))
+        return productos
+            .Select(p => new ProductoStockBajo(p.Id, p.Codigo, p.Nombre, p.UnidadMedida, p.Stock, p.StockMinimo,
+                p.StockMinimo - p.Stock))
             .OrderByDescending(x => x.Faltante)
             .ThenBy(x => x.Nombre, StringComparer.Ordinal)
-            .ToArray();
+            .ToList();
     }
 
-    public async Task<CierreCaja> CierreCaja(
-        DateOnly fecha,
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        int? empleadoId,
+    public async Task<CierreCaja> CierreCaja(DateOnly fecha, DateTime desdeUtc, DateTime hastaUtc, int? empleadoId,
         CancellationToken ct)
     {
-        var ventas = db.Set<Venta>()
+        var query = _context.Set<Venta>()
             .AsNoTracking()
-            .Where(x => x.Fecha >= desdeUtc && x.Fecha < hastaUtc);
+            .Include(v => v.Empleado)
+            .Where(v => v.Fecha >= desdeUtc && v.Fecha < hastaUtc);
 
-        if (empleadoId is { } empleado)
-            ventas = ventas.Where(x => x.EmpleadoId == empleado);
+        if (empleadoId != null)
+            query = query.Where(v => v.EmpleadoId == empleadoId);
 
-        var filas = await (
-            from venta in ventas
-            join vendedor in db.Set<Empleado>().AsNoTracking()
-                on venta.EmpleadoId equals vendedor.Id
-            select new
-            {
-                venta.Estado,
-                venta.EmpleadoId,
-                Vendedor = vendedor.Nombre + " " + vendedor.Apellidos,
-                venta.Subtotal,
-                venta.Descuento,
-                venta.Total
-            })
-            .ToListAsync(ct);
+        var ventas = await query.ToListAsync(ct);
 
-        var registradas = filas.Where(x => x.Estado == EstadoVenta.Registrada).ToArray();
-        var anuladas = filas.Where(x => x.Estado == EstadoVenta.Anulada).ToArray();
+        var registradas = ventas.Where(v => v.Estado == EstadoVenta.Registrada).ToList();
+        var anuladas = ventas.Where(v => v.Estado == EstadoVenta.Anulada).ToList();
 
         var porVendedor = registradas
-            .GroupBy(x => new { x.EmpleadoId, x.Vendedor })
-            .Select(g => new CierreVendedor(
-                g.Key.EmpleadoId,
-                g.Key.Vendedor.Trim(),
-                g.Count(),
-                g.Sum(x => x.Total)))
+            .GroupBy(v => new { v.EmpleadoId, Vendedor = (v.Empleado.Nombre + " " + v.Empleado.Apellidos).Trim() })
+            .Select(g => new CierreVendedor(g.Key.EmpleadoId, g.Key.Vendedor, g.Count(), g.Sum(v => v.Total)))
             .OrderByDescending(x => x.Total)
             .ThenBy(x => x.Vendedor, StringComparer.Ordinal)
-            .ToArray();
+            .ToList();
 
         return new CierreCaja(
             fecha,
-            registradas.Length,
-            registradas.Sum(x => x.Subtotal),
-            registradas.Sum(x => x.Descuento),
-            registradas.Sum(x => x.Total),
-            anuladas.Length,
-            anuladas.Sum(x => x.Total),
+            registradas.Count,
+            registradas.Sum(v => v.Subtotal),
+            registradas.Sum(v => v.Descuento),
+            registradas.Sum(v => v.Total),
+            anuladas.Count,
+            anuladas.Sum(v => v.Total),
             porVendedor);
     }
 
-    public async Task<IReadOnlyList<ComprasPorProveedor>> ComprasPorProveedor(
-        DateTime desdeUtc,
-        DateTime hastaUtc,
-        CancellationToken ct)
+    public async Task<List<ComprasPorProveedor>> ComprasPorProveedor(DateTime desdeUtc, DateTime hastaUtc, CancellationToken ct)
     {
-        var lineas = await (
-            from compra in db.Set<Compra>().AsNoTracking()
-            join proveedor in db.Set<Proveedor>().AsNoTracking()
-                on compra.ProveedorId equals proveedor.Id
-            from linea in compra.Lineas
-            where compra.Estado == EstadoCompra.Recibida
-                && compra.Fecha >= desdeUtc
-                && compra.Fecha < hastaUtc
-            select new
+        var compras = await _context.Set<Compra>()
+            .AsNoTracking()
+            .Include(c => c.Proveedor)
+            .Include(c => c.Lineas)
+            .Where(c => c.Estado == EstadoCompra.Recibida && c.Fecha >= desdeUtc && c.Fecha < hastaUtc)
+            .ToListAsync(ct);
+
+        return compras
+            .GroupBy(c => new { c.ProveedorId, c.Proveedor.Nombre, c.Proveedor.Pais })
+            .Select(g => new ComprasPorProveedor(
+                g.Key.ProveedorId,
+                g.Key.Nombre,
+                g.Key.Pais,
+                g.Count(),
+                Redondear(g.Sum(c => c.SubtotalUsd)),
+                g.Sum(c => c.TotalPen)))
+            .OrderByDescending(x => x.TotalPen)
+            .ThenBy(x => x.Proveedor, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public async Task<ResumenDashboard> Dashboard(DateOnly fecha, DateTime inicioDiaUtc, DateTime finDiaUtc,
+        DateTime inicioMesUtc, CancellationToken ct)
+    {
+        var ventasMes = await VentasRegistradas(inicioMesUtc, finDiaUtc)
+            .Select(v => new { v.Fecha, v.Total })
+            .ToListAsync(ct);
+
+        var ventasHoy = ventasMes.Where(v => v.Fecha >= inicioDiaUtc).ToList();
+        var totalMes = ventasMes.Sum(v => v.Total);
+        var ticketPromedio = ventasMes.Count > 0 ? Redondear(totalMes / ventasMes.Count) : 0m;
+
+        var lineasMes = await DetallesVendidos(inicioMesUtc, finDiaUtc)
+            .Select(d => new { d.ProductoId, d.Producto.CostoPromedio, d.Cantidad, d.Subtotal })
+            .ToListAsync(ct);
+
+        var margenMes = lineasMes
+            .GroupBy(l => new { l.ProductoId, l.CostoPromedio })
+            .Sum(g => g.Sum(l => l.Subtotal) - Redondear(g.Sum(l => l.Cantidad) * g.Key.CostoPromedio));
+
+        var productos = await _context.Set<Producto>()
+            .AsNoTracking()
+            .Where(p => p.Activo)
+            .Select(p => new
             {
-                CompraId = compra.Id,
-                compra.ProveedorId,
-                Proveedor = proveedor.Nombre,
-                proveedor.Pais,
-                linea.Cantidad,
-                linea.CostoUnitarioUsd,
-                linea.MercaderiaPen,
-                linea.FletePen,
-                linea.AduanaPen
+                p.StockMinimo,
+                Cantidad = p.Inventarios.Where(i => i.AlmacenId == Almacen.PrincipalId).Sum(i => i.Cantidad)
             })
             .ToListAsync(ct);
 
-        return lineas
-            .GroupBy(x => new { x.ProveedorId, x.Proveedor, x.Pais })
-            .Select(g => new ComprasPorProveedor(
-                g.Key.ProveedorId,
-                g.Key.Proveedor,
-                g.Key.Pais,
-                g.Select(x => x.CompraId).Distinct().Count(),
-                decimal.Round(g.Sum(x => x.Cantidad * x.CostoUnitarioUsd), 2, MidpointRounding.AwayFromZero),
-                g.Sum(x => x.MercaderiaPen + x.FletePen + x.AduanaPen)))
-            .OrderByDescending(x => x.TotalPen)
-            .ThenBy(x => x.Proveedor, StringComparer.Ordinal)
-            .ToArray();
+        return new ResumenDashboard(
+            fecha,
+            ventasHoy.Sum(v => v.Total),
+            ventasHoy.Count,
+            totalMes,
+            ventasMes.Count,
+            ticketPromedio,
+            margenMes,
+            productos.Count,
+            productos.Count(p => p.Cantidad <= p.StockMinimo),
+            productos.Count(p => p.Cantidad == 0));
     }
-
-    private sealed record LineaVendida(
-        int ProductoId,
-        string Codigo,
-        string Nombre,
-        string UnidadMedida,
-        decimal CostoPromedio,
-        decimal Cantidad,
-        decimal Subtotal);
 }

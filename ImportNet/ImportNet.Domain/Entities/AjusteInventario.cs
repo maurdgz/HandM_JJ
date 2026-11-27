@@ -2,57 +2,49 @@ namespace ImportNet.Domain.Entities;
 
 public enum MotivoAjuste { Merma, Rotura, ConteoFisico, DevolucionProveedor }
 
-// Un ajuste nunca corrige un movimiento anterior: agrega uno nuevo que compensa la diferencia.
 public static class AjusteInventario
 {
     public const int ObservacionMaxima = 300;
     public const decimal CantidadMaxima = 1000000m;
 
-    public static string Etiqueta(MotivoAjuste motivo) => motivo switch
+    public static string Etiqueta(MotivoAjuste motivo)
     {
-        MotivoAjuste.Merma => "Merma",
-        MotivoAjuste.Rotura => "Rotura",
-        MotivoAjuste.ConteoFisico => "Conteo físico",
-        MotivoAjuste.DevolucionProveedor => "Devolución a proveedor",
-        _ => motivo.ToString()
-    };
+        switch (motivo)
+        {
+            case MotivoAjuste.Merma: return "Merma";
+            case MotivoAjuste.Rotura: return "Rotura";
+            case MotivoAjuste.ConteoFisico: return "Conteo físico";
+            case MotivoAjuste.DevolucionProveedor: return "Devolución a proveedor";
+            default: return motivo.ToString();
+        }
+    }
 
     public static MotivoAjuste Interpretar(string? motivo)
     {
-        if (!string.IsNullOrWhiteSpace(motivo)
-            && Enum.TryParse<MotivoAjuste>(motivo.Trim(), ignoreCase: true, out var valor)
-            && Enum.IsDefined(valor)
-            && !int.TryParse(motivo, out _))
-            return valor;
+        var nombres = Enum.GetNames<MotivoAjuste>();
+        var encontrado = nombres.FirstOrDefault(n => string.Equals(n, motivo?.Trim(), StringComparison.OrdinalIgnoreCase));
 
-        throw new ReglaNegocioException(
-            "Motivo inválido: use Merma, Rotura, ConteoFisico o DevolucionProveedor.");
+        if (encontrado == null)
+            throw new ReglaNegocioException("Motivo inválido: use Merma, Rotura, ConteoFisico o DevolucionProveedor.");
+
+        return Enum.Parse<MotivoAjuste>(encontrado);
     }
 
-    /// <summary>
-    /// Para ConteoFisico, <paramref name="cantidad"/> es lo contado en el almacén y se registra la diferencia.
-    /// Para los demás motivos es la cantidad que sale del stock.
-    /// </summary>
-    public static MovimientoInventario Crear(
-        int productoId,
-        MotivoAjuste motivo,
-        decimal cantidad,
-        string? observacion,
-        decimal stockActual,
-        int empleadoId,
-        DateTime fecha)
+    public static MovimientoInventario Crear(int productoId, MotivoAjuste motivo, decimal cantidad,
+        string? observacion, decimal stockActual, int empleadoId, DateTime fecha)
     {
         if (productoId <= 0 || empleadoId <= 0)
             throw new ReglaNegocioException("Producto o empleado inválido.");
 
-        if (!Enum.IsDefined(motivo))
-            throw new ReglaNegocioException("Motivo de ajuste inválido.");
-
         var esConteo = motivo == MotivoAjuste.ConteoFisico;
 
-        if ((esConteo ? cantidad < 0 : cantidad <= 0)
-            || cantidad > CantidadMaxima
-            || decimal.Round(cantidad, 3) != cantidad)
+        if (esConteo && cantidad < 0)
+            throw new ReglaNegocioException("La cantidad contada debe ser cero o positiva, con hasta tres decimales.");
+
+        if (!esConteo && cantidad <= 0)
+            throw new ReglaNegocioException("La cantidad a descontar debe ser positiva, con hasta tres decimales.");
+
+        if (cantidad > CantidadMaxima || decimal.Round(cantidad, 3) != cantidad)
             throw new ReglaNegocioException(esConteo
                 ? "La cantidad contada debe ser cero o positiva, con hasta tres decimales."
                 : "La cantidad a descontar debe ser positiva, con hasta tres decimales.");
@@ -60,18 +52,17 @@ public static class AjusteInventario
         var diferencia = esConteo ? cantidad - stockActual : -cantidad;
 
         if (diferencia == 0)
-            throw new ReglaNegocioException(
-                "El conteo coincide con el stock actual; no hay ajuste que registrar.");
+            throw new ReglaNegocioException("El conteo coincide con el stock actual; no hay ajuste que registrar.");
 
         if (stockActual + diferencia < 0)
-            throw new ReglaNegocioException(
-                $"El ajuste dejaría stock negativo: stock actual {stockActual:0.###}.");
+            throw new ReglaNegocioException($"El ajuste dejaría stock negativo: stock actual {stockActual:0.###}.");
 
-        var texto = string.IsNullOrWhiteSpace(observacion) ? null : observacion.Trim();
+        string? texto = null;
+        if (!string.IsNullOrWhiteSpace(observacion))
+            texto = observacion.Trim();
 
-        if (texto?.Length > ObservacionMaxima)
-            throw new ReglaNegocioException(
-                $"La observación admite hasta {ObservacionMaxima} caracteres.");
+        if (texto != null && texto.Length > ObservacionMaxima)
+            throw new ReglaNegocioException($"La observación admite hasta {ObservacionMaxima} caracteres.");
 
         return new MovimientoInventario
         {

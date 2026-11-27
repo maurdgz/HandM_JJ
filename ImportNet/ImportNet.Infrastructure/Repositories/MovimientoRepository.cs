@@ -5,129 +5,85 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class MovimientoRepository(
-    AppDbContext context) : IMovimientoRepository
+internal sealed class MovimientoRepository : IMovimientoRepository
 {
+    private readonly AppDbContext _context;
+
+    public MovimientoRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
     public void Agregar(MovimientoInventario movimiento)
     {
-        context.Set<MovimientoInventario>().Add(movimiento);
+        _context.Set<MovimientoInventario>().Add(movimiento);
     }
 
-    public Task<bool> TieneEntradasDeCompra(
-        int compraId,
-        CancellationToken ct)
+    public Task<bool> TieneEntradasDeCompra(int compraId, CancellationToken ct)
     {
-        return context.Set<MovimientoInventario>()
-            .AnyAsync(
-                x => x.CompraId == compraId
-                    && x.Tipo == TipoMovimiento.Entrada,
-                ct);
+        return _context.Set<MovimientoInventario>()
+            .AnyAsync(m => m.CompraId == compraId && m.Tipo == TipoMovimiento.Entrada, ct);
     }
 
-    public async Task<IReadOnlyList<MovimientoInventario>>
-        ListarPorCompra(
-            int compraId,
-            CancellationToken ct)
+    public async Task<KardexProducto?> Kardex(int productoId, DateTime? desdeUtc, DateTime? hastaUtc, CancellationToken ct)
     {
-        return await context.Set<MovimientoInventario>()
+        var producto = await _context.Set<Producto>()
             .AsNoTracking()
-            .Where(x => x.CompraId == compraId)
-            .OrderBy(x => x.Fecha)
-            .ThenBy(x => x.Id)
-            .ToListAsync(ct);
-    }
+            .FirstOrDefaultAsync(p => p.Id == productoId, ct);
 
-    public async Task<KardexProducto?> Kardex(
-        int productoId,
-        DateTime? desdeUtc,
-        DateTime? hastaUtc,
-        CancellationToken ct)
-    {
-        var producto = await context.Set<Producto>()
-            .AsNoTracking()
-            .Where(x => x.Id == productoId)
-            .Select(x => new { x.Id, x.Codigo, x.Nombre, x.UnidadMedida })
-            .SingleOrDefaultAsync(ct);
-
-        if (producto is null)
+        if (producto == null)
             return null;
 
-        var stockActual = await context.Set<Inventario>()
+        var inventario = await _context.Set<Inventario>()
             .AsNoTracking()
-            .Where(x => x.ProductoId == productoId
-                && x.AlmacenId == Almacen.PrincipalId)
-            .Select(x => (decimal?)x.Cantidad)
-            .SingleOrDefaultAsync(ct) ?? 0m;
+            .FirstOrDefaultAsync(i => i.ProductoId == productoId && i.AlmacenId == Almacen.PrincipalId, ct);
 
-        var consulta =
-            from movimiento in context.Set<MovimientoInventario>().AsNoTracking()
-            join empleado in context.Set<Empleado>().AsNoTracking()
-                on movimiento.EmpleadoId equals empleado.Id
-            join venta in context.Set<Venta>().AsNoTracking()
-                on movimiento.VentaId equals (int?)venta.Id into ventas
-            from venta in ventas.DefaultIfEmpty()
-            where movimiento.ProductoId == productoId
-                && movimiento.AlmacenId == Almacen.PrincipalId
-            select new
-            {
-                movimiento.Id,
-                movimiento.Fecha,
-                movimiento.Tipo,
-                movimiento.Cantidad,
-                movimiento.CompraId,
-                movimiento.VentaId,
-                VentaNumero = venta == null ? (int?)null : venta.Numero,
-                movimiento.MotivoAjuste,
-                movimiento.Observacion,
-                Empleado = empleado.Nombre + " " + empleado.Apellidos
-            };
+        var stockActual = inventario == null ? 0m : inventario.Cantidad;
 
-        if (hastaUtc is { } hasta)
-            consulta = consulta.Where(x => x.Fecha < hasta);
+        var query = _context.Set<MovimientoInventario>()
+            .AsNoTracking()
+            .Include(m => m.Empleado)
+            .Include(m => m.Venta)
+            .Where(m => m.ProductoId == productoId && m.AlmacenId == Almacen.PrincipalId);
 
-        // SQLite no suma decimales en servidor; el saldo acumulado se calcula sobre la lista ordenada.
-        var filas = await consulta
-            .OrderBy(x => x.Fecha)
-            .ThenBy(x => x.Id)
+        if (hastaUtc != null)
+            query = query.Where(m => m.Fecha < hastaUtc);
+
+        var movimientos = await query
+            .OrderBy(m => m.Fecha)
+            .ThenBy(m => m.Id)
             .ToListAsync(ct);
 
-        var conSigno = filas
-            .Select(x => new
-            {
-                Fila = x,
-                Cantidad = MovimientoInventario.ConSigno(x.Tipo, x.Cantidad)
-            })
-            .ToList();
-
-        var saldoInicial = desdeUtc is { } desde
-            ? conSigno.Where(x => x.Fila.Fecha < desde).Sum(x => x.Cantidad)
-            : 0m;
-
-        var enRango = desdeUtc is { } inicio
-            ? conSigno.Where(x => x.Fila.Fecha >= inicio)
-            : conSigno;
-
-        var saldo = saldoInicial;
+        var saldoInicial = 0m;
+        var saldo = 0m;
         var lineas = new List<LineaKardex>();
 
-        foreach (var item in enRango)
+        foreach (var m in movimientos)
         {
-            var fila = item.Fila;
-            saldo += item.Cantidad;
+            var cantidad = m.Tipo == TipoMovimiento.Salida ? -m.Cantidad : m.Cantidad;
+
+            if (desdeUtc != null && m.Fecha < desdeUtc)
+            {
+                saldoInicial += cantidad;
+                saldo = saldoInicial;
+                continue;
+            }
+
+            saldo += cantidad;
 
             lineas.Add(new LineaKardex(
-                fila.Id,
-                fila.Fecha,
-                fila.Tipo.ToString(),
-                Referencia(fila.Tipo, fila.CompraId, fila.VentaNumero, fila.MotivoAjuste),
-                fila.CompraId,
-                fila.VentaId,
-                item.Cantidad > 0 ? item.Cantidad : 0m,
-                item.Cantidad < 0 ? -item.Cantidad : 0m,
+                m.Id,
+                m.Fecha,
+                m.Tipo.ToString(),
+                Referencia(m),
+                m.CompraId,
+                m.VentaId,
+                cantidad > 0 ? cantidad : 0m,
+                cantidad < 0 ? -cantidad : 0m,
                 saldo,
-                fila.Empleado.Trim(),
-                fila.MotivoAjuste is { } motivo ? AjusteInventario.Etiqueta(motivo) : null,
-                fila.Observacion));
+                (m.Empleado.Nombre + " " + m.Empleado.Apellidos).Trim(),
+                m.MotivoAjuste == null ? null : AjusteInventario.Etiqueta(m.MotivoAjuste.Value),
+                m.Observacion));
         }
 
         return new KardexProducto(
@@ -136,30 +92,24 @@ internal sealed class MovimientoRepository(
             producto.Nombre,
             producto.UnidadMedida,
             saldoInicial,
-            lineas.Sum(x => x.Entrada),
-            lineas.Sum(x => x.Salida),
+            lineas.Sum(l => l.Entrada),
+            lineas.Sum(l => l.Salida),
             saldo,
             stockActual,
             lineas);
     }
 
-    private static string Referencia(
-        TipoMovimiento tipo,
-        int? compraId,
-        int? ventaNumero,
-        MotivoAjuste? motivo)
+    private static string Referencia(MovimientoInventario m)
     {
-        if (compraId is { } compra)
-            return $"Compra #{compra}";
+        if (m.CompraId != null)
+            return $"Compra #{m.CompraId}";
 
-        if (ventaNumero is { } venta)
-            return tipo == TipoMovimiento.Entrada
-                ? $"Anulación venta N° {venta}"
-                : $"Venta N° {venta}";
+        if (m.Venta != null)
+            return m.Tipo == TipoMovimiento.Entrada ? $"Anulación venta N° {m.Venta.Numero}" : $"Venta N° {m.Venta.Numero}";
 
-        if (tipo == TipoMovimiento.Ajuste && motivo is { } ajuste)
-            return $"Ajuste: {AjusteInventario.Etiqueta(ajuste)}";
+        if (m.Tipo == TipoMovimiento.Ajuste && m.MotivoAjuste != null)
+            return $"Ajuste: {AjusteInventario.Etiqueta(m.MotivoAjuste.Value)}";
 
-        return tipo.ToString();
+        return m.Tipo.ToString();
     }
 }
