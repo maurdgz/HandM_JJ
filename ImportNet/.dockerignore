@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+frontend/
+docs/
+scripts/
+ImportNet.API/wwwroot/
+**/*.user
+**/secrets.json
+**/.env*

@@ -1,0 +1,57 @@
+services:
+  # API .NET 10 (Docker). La base de datos es Neon (PostgreSQL serverless).
+  - type: web
+    name: importnet-api
+    runtime: docker
+    plan: free
+    rootDir: ImportNet
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    envVars:
+      - key: ConnectionStrings__ImportNet
+        sync: false # cadena de Neon en formato Npgsql
+      - key: Jwt__Issuer
+        value: ImportNet
+      - key: Jwt__Audience
+        value: ImportNet.Frontend
+      - key: Jwt__SigningKey
+        generateValue: true # Base64 de 256 bits
+      - key: AllowedHosts
+        value: "*"
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: Database__MigrateOnStartup
+        value: "true"
+      - key: Swagger__Enabled
+        value: "true"
+      - key: Bootstrap__OnStartup
+        value: "true"
+      - key: Bootstrap__Nombre
+        value: Administrador
+      - key: Bootstrap__Apellidos
+        value: ImportNet
+      - key: Bootstrap__DocumentoIdentidad
+        value: "12345678"
+      - key: Bootstrap__Email
+        value: admin@importnet.pe
+      - key: Bootstrap__Telefono
+        value: "999999999"
+      - key: Bootstrap__Password
+        sync: false
+
+  # Frontend Astro (estático). /api/* se reenvía a la API, así no hace falta CORS.
+  - type: web
+    name: importnet-web
+    runtime: static
+    rootDir: ImportNet/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://importnet-api.onrender.com/api/*

@@ -2,6 +2,8 @@ using ImportNet.API.Configuration;
 using ImportNet.Application;
 using ImportNet.Infrastructure;
 using ImportNet.Infrastructure.Identity;
+using ImportNet.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +53,27 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Despliegue (Render + Neon): aplica migraciones y crea el admin inicial si se habilita por variables.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    Console.WriteLine("Migraciones aplicadas.");
+}
+
+if (app.Configuration.GetValue<bool>("Bootstrap:OnStartup"))
+{
+    try
+    {
+        await AdminBootstrapper.Ejecutar(app.Services, app.Configuration);
+        Console.WriteLine("Administrador inicial creado.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Bootstrap omitido: {ex.Message}");
+    }
+}
+
 if (args.Contains("--bootstrap-admin"))
 {
     if (!app.Environment.IsDevelopment())
@@ -65,7 +88,7 @@ app.Services.GetRequiredService<JwtSettings>();
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
