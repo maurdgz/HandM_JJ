@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ImportNet.Application.Security;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace ImportNet.Tests;
@@ -41,8 +43,20 @@ public sealed class SmokeTests
         Assert.True(paths.GetProperty("/api/auth/me").TryGetProperty("get", out _));
         foreach (var path in new[] { "/api/auth/me", "/api/productos", "/api/categorias", "/api/empleados" })
             Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
-        foreach (var path in new[] { "/", "/cuenta/login", "/cuenta/csrf", "/productos", "/empleados" })
+        foreach (var path in new[] { "/cuenta/login", "/cuenta/csrf" })
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(path)).StatusCode);
+        // El hosting aprobado sirve Astro si sus artefactos están preparados; la API sigue exigiendo JWT.
+        var webRoot = factory.Services.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider;
+        foreach (var (path, archivo) in new[] { ("/", "index.html"), ("/productos/", "productos/index.html"), ("/empleados/", "empleados/index.html") })
+        {
+            using var response = await client.GetAsync(path);
+            Assert.Equal(webRoot.GetFileInfo(archivo).Exists ? HttpStatusCode.OK : HttpStatusCode.NotFound, response.StatusCode);
+            if (response.IsSuccessStatusCode)
+            {
+                Assert.Equal("text/html", response.Content.Headers.ContentType!.MediaType);
+                Assert.Contains("astro-island", await response.Content.ReadAsStringAsync());
+            }
+        }
     }
 
     [Fact]
