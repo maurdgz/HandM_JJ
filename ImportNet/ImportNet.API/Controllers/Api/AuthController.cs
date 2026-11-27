@@ -1,24 +1,36 @@
+using ImportNet.API.Configuration;
 using ImportNet.Application.UseCases.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using ImportNet.API.Configuration;
 
 namespace ImportNet.API.Controllers.Api;
 
-[ApiController, Route("api/auth")]
+[ApiController]
+[Route("api/auth")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class AuthController(IMediator mediator) : ControllerBase
+public class AuthController : ControllerBase
 {
-    [HttpPost("login"), AllowAnonymous]
-    [EnableRateLimiting(LoginRateLimiting.Policy)]
-    [ProducesResponseType(200), ProducesResponseType(401)]
-    public async Task<IActionResult> Login(LoginQuery query, CancellationToken ct)
-        => Ok(await mediator.Send(query, ct));
+    private readonly IMediator _mediator;
 
-    [HttpGet("me"), Authorize]
-    [ProducesResponseType(200), ProducesResponseType(401)]
+    public AuthController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    [EnableRateLimiting(LoginRateLimiting.Policy)]
+    public async Task<IActionResult> Login(LoginQuery query, CancellationToken ct)
+    {
+        return Ok(await _mediator.Send(query, ct));
+    }
+
+    [HttpGet("me")]
+    [Authorize]
     public async Task<IActionResult> Me(CancellationToken ct)
-        => Ok(await mediator.Send(new GetUsuarioActualQuery(), ct));
+    {
+        return Ok(await _mediator.Send(new GetUsuarioActualQuery(), ct));
+    }
 }

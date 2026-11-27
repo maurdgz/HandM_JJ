@@ -1,10 +1,22 @@
-using MediatR;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Categorias.Queries;
-public sealed record GetAllCategoriasQuery() : IRequest<IReadOnlyList<Categoria>>;
-internal sealed class GetAllCategoriasQueryHandler(IUnitOfWork uow) : IRequestHandler<GetAllCategoriasQuery, IReadOnlyList<Categoria>>
+
+public sealed record GetAllCategoriasQuery : IRequest<IReadOnlyList<Categoria>>;
+
+internal sealed class GetAllCategoriasQueryHandler : IRequestHandler<GetAllCategoriasQuery, IReadOnlyList<Categoria>>
 {
-    public async Task<IReadOnlyList<Categoria>> Handle(GetAllCategoriasQuery r, CancellationToken ct)
-        => await uow.Categorias.Listar(ct);
+    private readonly IUnitOfWork _unitOfWork;
+
+    public GetAllCategoriasQueryHandler(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public Task<IReadOnlyList<Categoria>> Handle(GetAllCategoriasQuery request, CancellationToken cancellationToken)
+    {
+        return _unitOfWork.Categorias.Listar(cancellationToken);
+    }
 }

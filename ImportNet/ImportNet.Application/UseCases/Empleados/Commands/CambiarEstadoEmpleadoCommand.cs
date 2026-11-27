@@ -1,15 +1,27 @@
-using MediatR;
 using ImportNet.Application.Security;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Empleados.Commands;
 
 public sealed record CambiarEstadoEmpleadoCommand(int Id, bool Activo) : IRequest<Unit>;
-internal sealed class CambiarEstadoEmpleadoCommandHandler(IAdministracionEmpleados empleados, IUsuarioActual usuario) : IRequestHandler<CambiarEstadoEmpleadoCommand, Unit>
+
+internal sealed class CambiarEstadoEmpleadoCommandHandler : IRequestHandler<CambiarEstadoEmpleadoCommand, Unit>
 {
-    public async Task<Unit> Handle(CambiarEstadoEmpleadoCommand r, CancellationToken ct)
+    private readonly IAdministracionEmpleados _empleados;
+    private readonly IUsuarioActual _usuario;
+
+    public CambiarEstadoEmpleadoCommandHandler(IAdministracionEmpleados empleados, IUsuarioActual usuario)
     {
-        await usuario.ExigirAdministrador(ct);
-        EmpleadoReglas.ValidarId(r.Id);
-        await empleados.CambiarAcceso(r.Id, r.Activo, null, ct);
+        _empleados = empleados;
+        _usuario = usuario;
+    }
+
+    public async Task<Unit> Handle(CambiarEstadoEmpleadoCommand request, CancellationToken cancellationToken)
+    {
+        await _usuario.ExigirAdministrador(cancellationToken);
+        EmpleadoReglas.ValidarId(request.Id);
+
+        await _empleados.CambiarAcceso(request.Id, request.Activo, null, cancellationToken);
         return Unit.Value;
     }
 }

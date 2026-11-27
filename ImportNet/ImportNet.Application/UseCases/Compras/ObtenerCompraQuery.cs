@@ -1,9 +1,26 @@
-using MediatR;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Compras;
+
 public sealed record ObtenerCompraQuery(int Id) : IRequest<CompraDto>;
-internal sealed class ObtenerCompraQueryHandler(IUnitOfWork uow) : IRequestHandler<ObtenerCompraQuery, CompraDto>
+
+internal sealed class ObtenerCompraQueryHandler : IRequestHandler<ObtenerCompraQuery, CompraDto>
 {
-    public async Task<CompraDto> Handle(ObtenerCompraQuery r, CancellationToken ct) => CompraDto.Desde(await uow.Compras.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Compra no encontrada."));
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ObtenerCompraQueryHandler(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<CompraDto> Handle(ObtenerCompraQuery request, CancellationToken cancellationToken)
+    {
+        var compra = await _unitOfWork.Compras.Obtener(request.Id, cancellationToken);
+        if (compra == null)
+            throw new NoEncontradoException("Compra no encontrada.");
+
+        return CompraDto.Desde(compra);
+    }
 }

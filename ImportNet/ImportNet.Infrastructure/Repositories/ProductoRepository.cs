@@ -20,16 +20,38 @@ internal sealed class ProductoRepository : GenericRepository<Producto>, IProduct
             .ToListAsync(ct);
     }
 
-    public async Task<Pagina<Producto>> Buscar(string? texto, int? categoriaId, bool stockBajo, int pagina, int tamano, bool? activo, CancellationToken ct)
+    public async Task<Pagina<Producto>> Buscar(string? texto, int? categoriaId, bool stockBajo, int pagina, int tamano,
+        bool? activo, CancellationToken ct)
     {
-        var q = _dbSet.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(texto)) { var t = texto.Trim().ToLower(); q = q.Where(p => p.Nombre.ToLower().Contains(t) || p.Codigo.ToLower().Contains(t)); }
-        if (activo.HasValue) q = q.Where(p => p.Activo == activo);
-        if (categoriaId.HasValue) q = q.Where(p => p.CategoriaId == categoriaId);
-        if (stockBajo) q = q.Where(p => (_context.Set<Inventario>().Where(i => i.ProductoId == p.Id).Sum(i => (decimal?)i.Cantidad) ?? 0) <= p.StockMinimo);
-        var count = await q.CountAsync(ct);
-        return new(await q.OrderBy(p => p.Nombre).ThenBy(p => p.Id).Skip((pagina - 1) * tamano).Take(tamano).ToListAsync(ct), count, pagina, tamano);
+        var query = _dbSet.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(texto))
+        {
+            var busqueda = texto.Trim().ToLower();
+            query = query.Where(p => p.Nombre.ToLower().Contains(busqueda) || p.Codigo.ToLower().Contains(busqueda));
+        }
+
+        if (activo != null)
+            query = query.Where(p => p.Activo == activo);
+
+        if (categoriaId != null)
+            query = query.Where(p => p.CategoriaId == categoriaId);
+
+        if (stockBajo)
+            query = query.Where(p => p.Inventarios.Sum(i => i.Cantidad) <= p.StockMinimo);
+
+        var count = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderBy(p => p.Nombre)
+            .ThenBy(p => p.Id)
+            .Skip((pagina - 1) * tamano)
+            .Take(tamano)
+            .ToListAsync(ct);
+
+        return new Pagina<Producto>(items, count, pagina, tamano);
     }
+
     public Task<bool> ExisteCodigo(string codigo, int excluirId, CancellationToken ct)
     {
         return _dbSet.AnyAsync(p => p.Codigo == codigo && p.Id != excluirId, ct);
@@ -37,10 +59,18 @@ internal sealed class ProductoRepository : GenericRepository<Producto>, IProduct
 
     public async Task<bool> TieneReferencias(int id, CancellationToken ct)
     {
-        return await _context.Set<Inventario>().AnyAsync(i => i.ProductoId == id, ct)
-            || await _context.Set<MovimientoInventario>().AnyAsync(m => m.ProductoId == id, ct)
-            || await _context.Set<DetalleCompra>().AnyAsync(d => d.ProductoId == id, ct)
-            || await _context.Set<DetalleVenta>().AnyAsync(d => d.ProductoId == id, ct)
-            || await _context.Set<ProveedorProducto>().AnyAsync(pp => pp.ProductoId == id, ct);
+        if (await _context.Set<Inventario>().AnyAsync(i => i.ProductoId == id, ct))
+            return true;
+
+        if (await _context.Set<MovimientoInventario>().AnyAsync(m => m.ProductoId == id, ct))
+            return true;
+
+        if (await _context.Set<DetalleCompra>().AnyAsync(d => d.ProductoId == id, ct))
+            return true;
+
+        if (await _context.Set<DetalleVenta>().AnyAsync(d => d.ProductoId == id, ct))
+            return true;
+
+        return await _context.Set<ProveedorProducto>().AnyAsync(pp => pp.ProductoId == id, ct);
     }
 }

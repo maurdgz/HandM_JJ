@@ -7,30 +7,31 @@ namespace ImportNet.Application.UseCases.Ventas;
 
 public sealed record ObtenerNotaVentaQuery(int VentaId) : IRequest<NotaVenta>;
 
-internal sealed class ObtenerNotaVentaQueryHandler(
-    IUnitOfWork uow,
-    IUsuarioActual actor,
-    IEmpleadoRepository empleados)
-    : IRequestHandler<ObtenerNotaVentaQuery, NotaVenta>
+internal sealed class ObtenerNotaVentaQueryHandler : IRequestHandler<ObtenerNotaVentaQuery, NotaVenta>
 {
-    public async Task<NotaVenta> Handle(
-        ObtenerNotaVentaQuery request,
-        CancellationToken ct)
-    {
-        var usuarioId = actor.Id ?? throw new AccesoNoPermitidoException(401);
-        var empleado = await empleados.ObtenerPorUsuario(usuarioId, ct);
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IUsuarioActual _actor;
+    private readonly IEmpleadoRepository _empleados;
 
-        if (empleado is not { Activo: true })
-            throw new AccesoNoPermitidoException(403);
+    public ObtenerNotaVentaQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor, IEmpleadoRepository empleados)
+    {
+        _unitOfWork = unitOfWork;
+        _actor = actor;
+        _empleados = empleados;
+    }
+
+    public async Task<NotaVenta> Handle(ObtenerNotaVentaQuery request, CancellationToken cancellationToken)
+    {
+        var empleado = await _empleados.ObtenerEmpleadoActivo(_actor, cancellationToken);
 
         if (request.VentaId <= 0)
             throw new NoEncontradoException("La venta no existe.");
 
-        var nota = await uow.Ventas.Nota(request.VentaId, ct)
-            ?? throw new NoEncontradoException("La venta no existe.");
+        var nota = await _unitOfWork.Ventas.Nota(request.VentaId, cancellationToken);
+        if (nota == null)
+            throw new NoEncontradoException("La venta no existe.");
 
-        // El Vendedor no puede ver ventas ajenas.
-        if (nota.EmpleadoId != empleado.Id && !await actor.EsAdministrador(ct))
+        if (nota.EmpleadoId != empleado.Id && !await _actor.EsAdministrador(cancellationToken))
             throw new AccesoNoPermitidoException(403);
 
         return nota;

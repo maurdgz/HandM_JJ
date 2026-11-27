@@ -5,49 +5,44 @@ using MediatR;
 
 namespace ImportNet.Application.UseCases.Ventas;
 
-/// <summary>Fechas en hora de Perú (UTC−5), ambas inclusivas.</summary>
-public sealed record ConsultarVentasQuery(
-    DateOnly? Desde = null,
-    DateOnly? Hasta = null,
-    int Pagina = 1,
-    int Tamano = 20)
+public sealed record ConsultarVentasQuery(DateOnly? Desde = null, DateOnly? Hasta = null, int Pagina = 1, int Tamano = 20)
     : IRequest<Pagina<ResumenVenta>>;
 
-internal sealed class ConsultarVentasQueryHandler(
-    IUnitOfWork uow,
-    IUsuarioActual actor,
-    IEmpleadoRepository empleados)
-    : IRequestHandler<ConsultarVentasQuery, Pagina<ResumenVenta>>
+internal sealed class ConsultarVentasQueryHandler : IRequestHandler<ConsultarVentasQuery, Pagina<ResumenVenta>>
 {
-    public async Task<Pagina<ResumenVenta>> Handle(
-        ConsultarVentasQuery request,
-        CancellationToken ct)
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IUsuarioActual _actor;
+    private readonly IEmpleadoRepository _empleados;
+
+    public ConsultarVentasQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor, IEmpleadoRepository empleados)
+    {
+        _unitOfWork = unitOfWork;
+        _actor = actor;
+        _empleados = empleados;
+    }
+
+    public async Task<Pagina<ResumenVenta>> Handle(ConsultarVentasQuery request, CancellationToken cancellationToken)
     {
         if (request.Pagina < 1 || request.Pagina > 1000000 || request.Tamano < 1 || request.Tamano > 100)
             throw new ReglaNegocioException("Paginación inválida.");
 
         if (request.Desde > request.Hasta)
-            throw new ReglaNegocioException(
-                "La fecha inicial no puede ser posterior a la final.");
+            throw new ReglaNegocioException("La fecha inicial no puede ser posterior a la final.");
 
-        var usuarioId = actor.Id ?? throw new AccesoNoPermitidoException(401);
-        var empleado = await empleados.ObtenerPorUsuario(usuarioId, ct);
+        var empleado = await _empleados.ObtenerEmpleadoActivo(_actor, cancellationToken);
 
-        if (empleado is not { Activo: true })
-            throw new AccesoNoPermitidoException(403);
+        int? filtroEmpleado = empleado.Id;
+        if (await _actor.EsAdministrador(cancellationToken))
+            filtroEmpleado = null;
 
-        // El Administrador ve todas las ventas; el Vendedor solo las suyas.
-        int? filtroEmpleado = await actor.EsAdministrador(ct) ? null : empleado.Id;
+        DateTime? desdeUtc = null;
+        if (request.Desde != null)
+            desdeUtc = FechasPeru.InicioDelDiaUtc(request.Desde.Value);
 
-        var desdeUtc = request.Desde is { } desde ? FechasPeru.InicioDelDiaUtc(desde) : (DateTime?)null;
-        var hastaUtc = request.Hasta is { } hasta ? FechasPeru.InicioDelDiaUtc(hasta.AddDays(1)) : (DateTime?)null;
+        DateTime? hastaUtc = null;
+        if (request.Hasta != null)
+            hastaUtc = FechasPeru.InicioDelDiaUtc(request.Hasta.Value.AddDays(1));
 
-        return await uow.Ventas.Historial(
-            desdeUtc,
-            hastaUtc,
-            filtroEmpleado,
-            request.Pagina,
-            request.Tamano,
-            ct);
+        return await _unitOfWork.Ventas.Historial(desdeUtc, hastaUtc, filtroEmpleado, request.Pagina, request.Tamano, cancellationToken);
     }
 }

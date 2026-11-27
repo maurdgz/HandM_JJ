@@ -1,10 +1,11 @@
+using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal class GenericRepository<T> : IGenericRepository<T> where T : class
+internal class GenericRepository<T> : IGenericRepository<T> where T : CatalogEntity
 {
     protected readonly AppDbContext _context;
     protected readonly DbSet<T> _dbSet;
@@ -17,10 +18,7 @@ internal class GenericRepository<T> : IGenericRepository<T> where T : class
 
     public virtual async Task<IReadOnlyList<T>> Listar(CancellationToken ct)
     {
-        return await _dbSet
-            .AsNoTracking()
-            .OrderBy(x => EF.Property<int>(x, "Id"))
-            .ToListAsync(ct);
+        return await _dbSet.AsNoTracking().OrderBy(x => x.Id).ToListAsync(ct);
     }
 
     public async Task<T?> Obtener(int id, CancellationToken ct)
@@ -30,7 +28,7 @@ internal class GenericRepository<T> : IGenericRepository<T> where T : class
 
     public Task<bool> Existe(int id, CancellationToken ct)
     {
-        return _dbSet.AnyAsync(x => EF.Property<int>(x, "Id") == id, ct);
+        return _dbSet.AnyAsync(x => x.Id == id, ct);
     }
 
     public void Agregar(T entidad)
