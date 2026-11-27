@@ -2,6 +2,8 @@ using ImportNet.Application.UseCases.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using ImportNet.API.Configuration;
 
 namespace ImportNet.API.Controllers.Api;
 
@@ -10,6 +12,7 @@ namespace ImportNet.API.Controllers.Api;
 public sealed class AuthController(IMediator mediator) : ControllerBase
 {
     [HttpPost("login"), AllowAnonymous]
+    [EnableRateLimiting(LoginRateLimiting.Policy)]
     [ProducesResponseType(200), ProducesResponseType(401)]
     public async Task<IActionResult> Login(LoginQuery query, CancellationToken ct)
         => Ok(await mediator.Send(query, ct));

@@ -1,8 +1,8 @@
 # ImportNet
 
-API REST para la gestión de una tienda importadora: catálogo, empleados y roles, autenticación JWT.
+Sistema para una tienda importadora: empleados y roles, catálogo, compras, inventario, POS, historial y anulación de ventas con autenticación JWT.
 
-**Stack:** ASP.NET Core Web API .NET 10, PostgreSQL (EF Core + Npgsql), MediatR, arquitectura hexagonal (Domain, Application, Infrastructure, API) y xUnit. Frontend previsto: Astro + TypeScript + Tailwind con islas React (shadcn/ui, Recharts).
+**Stack:** ASP.NET Core Web API .NET 10, PostgreSQL (EF Core + Npgsql), MediatR, arquitectura hexagonal (Domain, Application, Infrastructure, API) y xUnit. Frontend: Astro + TypeScript + Tailwind con islas React y shadcn/ui.
 
 ## Levantar en local
 
@@ -21,11 +21,16 @@ dotnet ef database update --project ImportNet.Infrastructure --startup-project I
 # 3. Primer administrador (solo si no hay ninguno activo)
 powershell -ExecutionPolicy Bypass -File ./scripts/Crear-Administrador.ps1
 
-# 4. Ejecutar
+# 4. Compilar el frontend para servirlo desde la API (requiere Node 24+)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/Preparar-Frontend.ps1
+
+# 5. Ejecutar API y frontend en el mismo puerto
 dotnet run --project ImportNet.API --launch-profile ImportNet
 ```
 
 En despliegues usar las variables `ConnectionStrings__ImportNet`, `Jwt__Issuer`, `Jwt__Audience` y `Jwt__SigningKey` (Base64, mínimo 32 bytes).
+
+**Aplicación:** http://localhost:5080/login. Repetir la preparación al cambiar el frontend; `-SkipInstall` omite npm ci si las dependencias ya están instaladas. No se necesita iniciar Astro para este modo.
 
 **Swagger:** http://localhost:5080/swagger (solo en Development). Hacer login en `POST /api/auth/login`, pegar `accessToken` en **Authorize** sin prefijo.
 
@@ -57,3 +62,7 @@ Verificación específica: `dotnet test ../ImportNet.sln --configuration Release
 - [Decisiones vigentes](ImportNet/docs/DECISIONES.md)
 - [Prueba manual y endpoints](ImportNet/docs/PRUEBA-MANUAL.md)
 - [Día 07: compras, costos y contrato para recepción](ImportNet/docs/DIA-07-COMPRAS.md)
+- [Día 08: recepción e inventario](ImportNet/docs/DIA-08-RECEPCION-INVENTARIO.md)
+- [Día 09: ajustes y kardex](ImportNet/docs/DIA-09-AJUSTES-KARDEX.md)
+- [Historial, nota y anulación](ImportNet/docs/VENTAS-HISTORIAL-ANULACION.md)
+- [Día 16: seguridad y frontend servido por la API](ImportNet/docs/DIA-16-SEGURIDAD.md)

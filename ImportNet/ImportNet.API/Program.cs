@@ -16,7 +16,9 @@ builder.Services.AddAuthorization(o => {
     o.AddPolicy("Inventario", p => p.RequireRole("Administrador"));
     o.AddPolicy("Ventas", p => p.RequireRole("Administrador", "Vendedor"));
 });
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+    context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
+builder.Services.AddLoginRateLimiting();
 builder.Services.AddExceptionHandler<ErroresHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o => {
@@ -61,7 +63,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 else { app.UseHsts(); app.UseHttpsRedirection(); }
+app.UseApiResponses();
+app.UseFrontend();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

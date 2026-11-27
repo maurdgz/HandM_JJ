@@ -1,43 +1,46 @@
-# Astro Starter Kit: Minimal
+# Frontend ImportNet
 
-```sh
-npm create astro@latest -- --template minimal
+Astro estático con TypeScript strict, Tailwind, React y shadcn/ui. Requiere Node 24+ y la API .NET configurada según el [README general](../../README.md).
+
+## Un solo host
+
+Desde la raíz del repositorio:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ImportNet/scripts/Preparar-Frontend.ps1
+dotnet run --project ImportNet/ImportNet.API --launch-profile ImportNet
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Abrir http://localhost:5080/login. El script instala con npm ci, comprueba tipos, compila Astro y copia dist a wwwroot de la API. Repetirlo al modificar el frontend; añadir `-SkipInstall` si las dependencias ya están instaladas. No se necesita un servidor Astro en este modo.
 
-## 🚀 Project Structure
+## Desarrollo con proxy
 
-Inside of your Astro project, you'll see the following folders and files:
+Desde esta carpeta, con la API ejecutándose:
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```powershell
+Copy-Item .env.example .env
+npm.cmd ci
+npm.cmd run astro -- dev --background
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+API_URL en .env apunta a la API local. Vite reenvía /api a esa dirección solo durante desarrollo. No colocar secretos en variables públicas ni en los archivos del frontend.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```powershell
+npm.cmd run check
+npm.cmd run build
+npm.cmd run astro -- dev status
+npm.cmd run astro -- dev logs
+npm.cmd run astro -- dev stop
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+En Linux o macOS usar npm en lugar de npm.cmd. dist, .astro, node_modules, .env y wwwroot generado no se versionan.
 
-## 🧞 Commands
+## Rutas y sesión
 
-All commands are run from the root of the project, from a terminal:
+- /login inicia sesión con JWT; token, vencimiento y roles se guardan en sessionStorage.
+- /empleados solo para Administrador. El menú se adapta al rol; los permisos reales los impone la API.
+- /ventas conserva el POS; /historial consulta por fechas; /nota?id=... permite imprimir la nota.
+- Catálogos, compras, stock y kardex mantienen los permisos de sus endpoints.
+- src/lib/api.ts adjunta Bearer y, al recibir 401, limpia la sesión y redirige a login. Un 403 muestra el error sin cerrar la sesión.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Detalles y pruebas: [historial y anulación](../docs/VENTAS-HISTORIAL-ANULACION.md) y [Día 16](../docs/DIA-16-SEGURIDAD.md).
