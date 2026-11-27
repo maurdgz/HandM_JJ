@@ -34,4 +34,13 @@ public sealed class VentasController(IMediator mediator) : ControllerBase
         var resultado = await mediator.Send(new ConsultarVentasQuery(desde, hasta, pagina, tamano), ct);
         return Ok(resultado);
     }
+
+    /// <summary>Nota de venta. El Vendedor solo puede ver las suyas.</summary>
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(NotaVenta), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Nota(int id, CancellationToken ct)
+        => Ok(await mediator.Send(new ObtenerNotaVentaQuery(id), ct));
 }

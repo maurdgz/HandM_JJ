@@ -15,4 +15,7 @@ public interface IVentaRepository
         int pagina,
         int tamano,
         CancellationToken ct);
+
+    /// <summary>Datos de la nota de venta; null si la venta no existe.</summary>
+    Task<NotaVenta?> Nota(int ventaId, CancellationToken ct);
 }

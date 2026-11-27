@@ -67,4 +67,71 @@ internal sealed class VentaRepository(AppDbContext db) : IVentaRepository
 
         return new Pagina<ResumenVenta>(items, count, pagina, tamano);
     }
+
+    public async Task<NotaVenta?> Nota(int ventaId, CancellationToken ct)
+    {
+        var cabecera = await (
+            from venta in db.Set<Venta>().AsNoTracking()
+            join vendedor in db.Set<Empleado>().AsNoTracking()
+                on venta.EmpleadoId equals vendedor.Id
+            join cliente in db.Set<Cliente>().AsNoTracking()
+                on venta.ClienteId equals (int?)cliente.Id into clientes
+            from cliente in clientes.DefaultIfEmpty()
+            where venta.Id == ventaId
+            select new
+            {
+                venta.Id,
+                venta.Numero,
+                venta.Fecha,
+                venta.Estado,
+                venta.EmpleadoId,
+                Vendedor = vendedor.Nombre + " " + vendedor.Apellidos,
+                TipoDocumento = cliente == null ? (TipoDocumento?)null : cliente.TipoDocumento,
+                Documento = cliente == null ? "" : cliente.NumeroDocumento,
+                Cliente = cliente == null ? "Cliente varios" : cliente.Nombre,
+                venta.Subtotal,
+                venta.Descuento,
+                venta.Total,
+                venta.MotivoAnulacion,
+                venta.FechaAnulacion
+            })
+            .SingleOrDefaultAsync(ct);
+
+        if (cabecera is null)
+            return null;
+
+        var lineas = await (
+            from detalle in db.Set<DetalleVenta>().AsNoTracking()
+            join producto in db.Set<Producto>().AsNoTracking()
+                on detalle.ProductoId equals producto.Id
+            where detalle.VentaId == ventaId
+            orderby detalle.Id
+            select new LineaNotaVenta(
+                detalle.ProductoId,
+                producto.Codigo,
+                producto.Nombre,
+                producto.UnidadMedida,
+                detalle.Cantidad,
+                detalle.PrecioUnitario,
+                detalle.Descuento,
+                detalle.Subtotal))
+            .ToListAsync(ct);
+
+        return new NotaVenta(
+            cabecera.Id,
+            cabecera.Numero,
+            cabecera.Fecha,
+            cabecera.Estado.ToString(),
+            cabecera.EmpleadoId,
+            cabecera.Vendedor.Trim(),
+            cabecera.TipoDocumento?.ToString().ToUpperInvariant() ?? "",
+            cabecera.Documento,
+            cabecera.Cliente,
+            cabecera.Subtotal,
+            cabecera.Descuento,
+            cabecera.Total,
+            cabecera.MotivoAnulacion,
+            cabecera.FechaAnulacion,
+            lineas);
+    }
 }
