@@ -1,31 +1,26 @@
-namespace ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 
-public enum MotivoAjuste { Merma, Rotura, ConteoFisico, DevolucionProveedor }
+namespace ImportNet.Domain.Entities;
 
 public static class AjusteInventario
 {
     public const int ObservacionMaxima = 300;
     public const decimal CantidadMaxima = 1000000m;
 
-    public static string Etiqueta(MotivoAjuste motivo)
+    public static string Etiqueta(MotivoAjuste motivo) => motivo switch
     {
-        switch (motivo)
-        {
-            case MotivoAjuste.Merma: return "Merma";
-            case MotivoAjuste.Rotura: return "Rotura";
-            case MotivoAjuste.ConteoFisico: return "Conteo físico";
-            case MotivoAjuste.DevolucionProveedor: return "Devolución a proveedor";
-            default: return motivo.ToString();
-        }
-    }
+        MotivoAjuste.Merma => "Merma",
+        MotivoAjuste.Rotura => "Rotura",
+        MotivoAjuste.ConteoFisico => "Conteo físico",
+        MotivoAjuste.DevolucionProveedor => "Devolución a proveedor",
+        _ => motivo.ToString()
+    };
 
     public static MotivoAjuste Interpretar(string? motivo)
     {
         var nombres = Enum.GetNames<MotivoAjuste>();
-        var encontrado = nombres.FirstOrDefault(n => string.Equals(n, motivo?.Trim(), StringComparison.OrdinalIgnoreCase));
-
-        if (encontrado == null)
-            throw new ReglaNegocioException("Motivo inválido: use Merma, Rotura, ConteoFisico o DevolucionProveedor.");
+        var encontrado = nombres.FirstOrDefault(n => string.Equals(n, motivo?.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?? throw new ReglaNegocioException("Motivo inválido: use Merma, Rotura, ConteoFisico o DevolucionProveedor.");
 
         return Enum.Parse<MotivoAjuste>(encontrado);
     }

@@ -2,11 +2,10 @@ using ImportNet.Domain.Entities;
 
 namespace ImportNet.Domain.Interfaces;
 
-public interface IProveedorRepository
+public interface IProveedorRepository : IGenericRepository<Proveedor>
 {
-    Task<IReadOnlyList<Proveedor>> Proveedores(string? texto, CancellationToken ct);
-    Task<Proveedor?> Proveedor(int id, CancellationToken ct);
-    Task<IReadOnlyList<int>> Productos(int proveedorId, CancellationToken ct);
-    Task GuardarProveedor(Proveedor proveedor, IReadOnlyList<int> productos, CancellationToken ct);
-    Task EliminarProveedor(int id, CancellationToken ct);
+    Task<IReadOnlyList<Proveedor>> ListarAsync(string? texto, CancellationToken ct = default);
+    Task<IReadOnlyList<int>> ObtenerProductosIdsAsync(int proveedorId, CancellationToken ct = default);
+    Task GuardarConProductosAsync(Proveedor proveedor, IReadOnlyList<int> productos, CancellationToken ct = default);
+    Task EliminarProveedorAsync(int id, CancellationToken ct = default);
 }

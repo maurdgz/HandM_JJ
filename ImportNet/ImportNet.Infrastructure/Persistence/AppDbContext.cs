@@ -1,4 +1,5 @@
 using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -47,7 +48,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.ProductoId, x.AlmacenId }).IsUnique();
             e.HasOne(x => x.Producto).WithMany(p => p.Inventarios).HasForeignKey(x => x.ProductoId);
             e.HasOne<Almacen>().WithMany().HasForeignKey(x => x.AlmacenId);
-            e.Property(x => x.Version).IsRowVersion();
+            if (Database.IsNpgsql())
+                e.Property(x => x.Version).IsRowVersion();
+            else
+                e.Ignore(x => x.Version);
         });
 
         b.Entity<Proveedor>(e =>
@@ -91,7 +95,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.Fecha);
             e.HasIndex(x => new { x.Estado, x.Fecha }).HasDatabaseName("IX_Venta_EstadoFecha");
             e.HasIndex(x => new { x.EmpleadoId, x.Fecha }).HasDatabaseName("IX_Venta_EmpleadoFecha");
-            e.Property(x => x.Version).IsRowVersion();
+            if (Database.IsNpgsql())
+                e.Property(x => x.Version).IsRowVersion();
+            else
+                e.Ignore(x => x.Version);
         });
 
         b.Entity<DetalleVenta>(e =>
@@ -133,6 +140,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
             fk.DeleteBehavior = DeleteBehavior.Restrict;
 
         b.Entity<Compra>().HasMany(x => x.Lineas).WithOne().HasForeignKey(x => x.CompraId).OnDelete(DeleteBehavior.Cascade);
+        if (Database.IsNpgsql())
+            b.Entity<Compra>().Property(x => x.Version).IsRowVersion();
+        else
+            b.Entity<Compra>().Ignore(x => x.Version);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken ct = default)

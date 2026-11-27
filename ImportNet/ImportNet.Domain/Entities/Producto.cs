@@ -1,64 +1,9 @@
+using ImportNet.Domain.Common;
+using ImportNet.Domain.Exceptions;
+
 namespace ImportNet.Domain.Entities;
 
-public abstract class CatalogEntity
-{
-    public int Id { get; set; }
-}
-
-public sealed class ReglaNegocioException : Exception
-{
-    public ReglaNegocioException(string mensaje) : base(mensaje)
-    {
-    }
-}
-
-public sealed class ConflictoException : Exception
-{
-    public ConflictoException(string mensaje) : base(mensaje)
-    {
-    }
-}
-
-public sealed class NoEncontradoException : Exception
-{
-    public NoEncontradoException(string mensaje) : base(mensaje)
-    {
-    }
-}
-
-public static class Reglas
-{
-    public static string Texto(string? valor, int max, string campo)
-    {
-        if (string.IsNullOrWhiteSpace(valor) || valor.Trim().Length > max)
-            throw new ReglaNegocioException($"{campo} es obligatorio y admite hasta {max} caracteres.");
-
-        return valor.Trim();
-    }
-}
-
-public sealed class Categoria : CatalogEntity
-{
-    public string Nombre { get; private set; } = "";
-    public string NombreNormalizado { get; private set; } = "";
-
-    private Categoria()
-    {
-    }
-
-    public Categoria(string nombre)
-    {
-        Editar(nombre);
-    }
-
-    public void Editar(string nombre)
-    {
-        Nombre = Reglas.Texto(nombre, 100, "Nombre");
-        NombreNormalizado = Nombre.ToUpperInvariant();
-    }
-}
-
-public sealed class Producto : CatalogEntity
+public sealed class Producto : Entity
 {
     public string Codigo { get; private set; } = "";
     public string Nombre { get; private set; } = "";

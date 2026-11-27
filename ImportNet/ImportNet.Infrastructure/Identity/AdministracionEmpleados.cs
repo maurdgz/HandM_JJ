@@ -1,6 +1,7 @@
 using ImportNet.Application.Security;
 using ImportNet.Application.UseCases.Empleados;
 using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,22 +9,14 @@ using Npgsql;
 
 namespace ImportNet.Infrastructure.Identity;
 
-internal sealed class AdministracionEmpleados : IAdministracionEmpleados
+internal sealed class AdministracionEmpleados(
+    AppDbContext context,
+    UserManager<ApplicationUser> users,
+    RoleManager<IdentityRole> roles) : IAdministracionEmpleados
 {
-    private readonly AppDbContext _context;
-    private readonly UserManager<ApplicationUser> _users;
-    private readonly RoleManager<IdentityRole> _roles;
-
-    public AdministracionEmpleados(AppDbContext context, UserManager<ApplicationUser> users, RoleManager<IdentityRole> roles)
+    public async Task<IReadOnlyList<EmpleadoDto>> ListarAsync(string? busqueda, bool? activo, CancellationToken ct = default)
     {
-        _context = context;
-        _users = users;
-        _roles = roles;
-    }
-
-    public async Task<IReadOnlyList<EmpleadoDto>> Listar(string? busqueda, bool? activo, CancellationToken ct)
-    {
-        var query = _context.Set<Empleado>().AsNoTracking();
+        var query = context.Set<Empleado>().AsNoTracking();
 
         if (activo != null)
             query = query.Where(e => e.Activo == activo);
@@ -36,7 +29,7 @@ internal sealed class AdministracionEmpleados : IAdministracionEmpleados
         var resultado = new List<EmpleadoDto>();
         foreach (var empleado in empleados)
         {
-            var dto = await CrearDto(empleado);
+            var dto = await CrearDtoAsync(empleado);
             if (Coincide(dto, busqueda))
                 resultado.Add(dto);
         }
@@ -44,33 +37,30 @@ internal sealed class AdministracionEmpleados : IAdministracionEmpleados
         return resultado;
     }
 
-    public async Task<EmpleadoDto?> Obtener(int id, CancellationToken ct)
+    public async Task<EmpleadoDto?> ObtenerAsync(int id, CancellationToken ct = default)
     {
-        var empleado = await _context.Set<Empleado>().AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
-        if (empleado == null)
-            return null;
-
-        return await CrearDto(empleado);
+        var empleado = await context.Set<Empleado>().AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
+        return empleado == null ? null : await CrearDtoAsync(empleado);
     }
 
-    public async Task<int> Registrar(EmpleadoDatos datos, string password, bool activo, string[] roles, CancellationToken ct)
+    public async Task<int> RegistrarAsync(EmpleadoDatos datos, string password, bool activo, string[] rolesSeleccionados, CancellationToken ct = default)
     {
-        await using var transaccion = await _context.Database.BeginTransactionAsync(ct);
+        await using var transaccion = await context.Database.BeginTransactionAsync(ct);
 
         try
         {
-            await ComprobarUnicos(datos, null, ct);
-            await PrepararRoles();
+            await ComprobarUnicosAsync(datos, null, ct);
+            await PrepararRolesAsync();
 
             var user = new ApplicationUser { UserName = datos.Email, Email = datos.Email, PhoneNumber = datos.Telefono };
-            Exigir(await _users.CreateAsync(user, password));
-            Exigir(await _users.AddToRolesAsync(user, roles));
+            Exigir(await users.CreateAsync(user, password));
+            Exigir(await users.AddToRolesAsync(user, rolesSeleccionados));
 
             var empleado = new Empleado { UsuarioId = user.Id, Activo = activo };
             Copiar(empleado, datos);
-            _context.Set<Empleado>().Add(empleado);
+            context.Set<Empleado>().Add(empleado);
 
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
             await transaccion.CommitAsync(ct);
             return empleado.Id;
         }
@@ -80,26 +70,25 @@ internal sealed class AdministracionEmpleados : IAdministracionEmpleados
         }
     }
 
-    public async Task Actualizar(int id, EmpleadoDatos datos, bool activo, string[] roles, CancellationToken ct)
+    public async Task ActualizarAsync(int id, EmpleadoDatos datos, bool activo, string[] rolesSeleccionados, CancellationToken ct = default)
     {
-        await using var transaccion = await _context.Database.BeginTransactionAsync(ct);
+        await using var transaccion = await context.Database.BeginTransactionAsync(ct);
 
         try
         {
-            var empleado = await Cargar(id, ct);
-            await ComprobarUnicos(datos, empleado.UsuarioId, ct);
+            var empleado = await CargarAsync(id, ct);
+            await ComprobarUnicosAsync(datos, empleado.UsuarioId, ct);
 
-            var user = await _users.FindByIdAsync(empleado.UsuarioId);
-            if (user == null)
-                throw new ConflictoException("El empleado no tiene una cuenta válida.");
+            var user = await users.FindByIdAsync(empleado.UsuarioId)
+                ?? throw new ConflictoException("El empleado no tiene una cuenta válida.");
 
-            await GuardarAcceso(empleado, user, activo, roles);
+            await GuardarAccesoAsync(empleado, user, activo, rolesSeleccionados);
             Copiar(empleado, datos);
-            Exigir(await _users.SetEmailAsync(user, datos.Email));
-            Exigir(await _users.SetUserNameAsync(user, datos.Email));
-            Exigir(await _users.SetPhoneNumberAsync(user, datos.Telefono));
+            Exigir(await users.SetEmailAsync(user, datos.Email));
+            Exigir(await users.SetUserNameAsync(user, datos.Email));
+            Exigir(await users.SetPhoneNumberAsync(user, datos.Telefono));
 
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
             await transaccion.CommitAsync(ct);
         }
         catch (DbUpdateException ex) when (EsDuplicado(ex))
@@ -108,55 +97,64 @@ internal sealed class AdministracionEmpleados : IAdministracionEmpleados
         }
     }
 
-    public async Task CambiarAcceso(int id, bool? activo, string[]? roles, CancellationToken ct)
+    public async Task CambiarAccesoAsync(int id, bool? activo, string[]? rolesSeleccionados, CancellationToken ct = default)
     {
-        await using var transaccion = await _context.Database.BeginTransactionAsync(ct);
+        await using var transaccion = await context.Database.BeginTransactionAsync(ct);
 
-        var empleado = await Cargar(id, ct);
-        var user = await _users.FindByIdAsync(empleado.UsuarioId);
-        if (user == null)
-            throw new ConflictoException("Cuenta no encontrada.");
+        var empleado = await CargarAsync(id, ct);
+        var user = await users.FindByIdAsync(empleado.UsuarioId)
+            ?? throw new ConflictoException("Cuenta no encontrada.");
 
         var nuevoEstado = activo ?? empleado.Activo;
-        var nuevosRoles = roles ?? (await _users.GetRolesAsync(user)).ToArray();
+        var nuevosRoles = rolesSeleccionados ?? [.. await users.GetRolesAsync(user)];
 
-        await GuardarAcceso(empleado, user, nuevoEstado, nuevosRoles);
-        await _context.SaveChangesAsync(ct);
+        await GuardarAccesoAsync(empleado, user, nuevoEstado, nuevosRoles);
+        await context.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
     }
 
-    private async Task GuardarAcceso(Empleado empleado, ApplicationUser user, bool activo, string[] roles)
+    private async Task GuardarAccesoAsync(Empleado empleado, ApplicationUser user, bool activo, string[] rolesSeleccionados)
     {
-        var actuales = await _users.GetRolesAsync(user);
+        var actuales = await users.GetRolesAsync(user);
 
         var eraAdministrador = empleado.Activo && actuales.Contains(RolesImportNet.Administrador);
-        var dejaDeSerAdministrador = !activo || !roles.Contains(RolesImportNet.Administrador);
+        var dejaDeSerAdministrador = !activo || !rolesSeleccionados.Contains(RolesImportNet.Administrador);
 
-        if (eraAdministrador && dejaDeSerAdministrador && !await HayOtroAdministrador(empleado.Id))
+        if (eraAdministrador && dejaDeSerAdministrador && !await HayOtroAdministradorAsync(empleado.Id))
             throw new ConflictoException("No se puede desactivar ni quitar el rol al último Administrador activo.");
 
-        await PrepararRoles();
-        Exigir(await _users.RemoveFromRolesAsync(user, actuales.Except(roles)));
-        Exigir(await _users.AddToRolesAsync(user, roles.Except(actuales)));
+        await PrepararRolesAsync();
+        Exigir(await users.RemoveFromRolesAsync(user, actuales.Except(rolesSeleccionados)));
+        Exigir(await users.AddToRolesAsync(user, rolesSeleccionados.Except(actuales)));
         empleado.Activo = activo;
-        Exigir(await _users.UpdateSecurityStampAsync(user));
+        Exigir(await users.UpdateSecurityStampAsync(user));
     }
 
-    private async Task<bool> HayOtroAdministrador(int empleadoId)
+    private async Task<bool> HayOtroAdministradorAsync(int empleadoId)
     {
-        var administradores = await _users.GetUsersInRoleAsync(RolesImportNet.Administrador);
+        var administradores = await users.GetUsersInRoleAsync(RolesImportNet.Administrador);
         var ids = administradores.Select(u => u.Id).ToList();
 
-        return await _context.Set<Empleado>().AnyAsync(e => ids.Contains(e.UsuarioId) && e.Activo && e.Id != empleadoId);
+        return await context.Set<Empleado>().AnyAsync(e => ids.Contains(e.UsuarioId) && e.Activo && e.Id != empleadoId);
     }
 
-    private async Task<EmpleadoDto> CrearDto(Empleado empleado)
+    private async Task<EmpleadoDto> CrearDtoAsync(Empleado empleado)
     {
-        var user = await _users.FindByIdAsync(empleado.UsuarioId);
-        var roles = user == null ? new List<string>() : (await _users.GetRolesAsync(user)).Order().ToList();
+        var user = await users.FindByIdAsync(empleado.UsuarioId);
+        var rolesUsuario = user == null ? new List<string>() : (await users.GetRolesAsync(user)).Order().ToList();
 
-        return new EmpleadoDto(empleado.Id, empleado.UsuarioId, empleado.Nombre, empleado.Apellidos, empleado.DocumentoIdentidad,
-            user?.Email ?? "", user?.PhoneNumber ?? "", empleado.Cargo, empleado.Area, empleado.Activo, roles);
+        return new EmpleadoDto(
+            empleado.Id,
+            empleado.UsuarioId,
+            empleado.Nombre,
+            empleado.Apellidos,
+            empleado.DocumentoIdentidad,
+            user?.Email ?? "",
+            user?.PhoneNumber ?? "",
+            empleado.Cargo,
+            empleado.Area,
+            empleado.Activo,
+            rolesUsuario);
     }
 
     private static bool Coincide(EmpleadoDto empleado, string? busqueda)
@@ -171,33 +169,30 @@ internal sealed class AdministracionEmpleados : IAdministracionEmpleados
             || empleado.Email.ToUpperInvariant().Contains(texto);
     }
 
-    private async Task ComprobarUnicos(EmpleadoDatos datos, string? usuarioId, CancellationToken ct)
+    private async Task ComprobarUnicosAsync(EmpleadoDatos datos, string? usuarioId, CancellationToken ct)
     {
-        var documentoUsado = await _context.Set<Empleado>()
+        var documentoUsado = await context.Set<Empleado>()
             .AnyAsync(e => e.DocumentoIdentidad == datos.DocumentoIdentidad && e.UsuarioId != usuarioId, ct);
         if (documentoUsado)
             throw new ConflictoException("El documento ya está registrado.");
 
-        var user = await _users.FindByEmailAsync(datos.Email);
+        var user = await users.FindByEmailAsync(datos.Email);
         if (user != null && user.Id != usuarioId)
             throw new ConflictoException("El correo ya está registrado.");
     }
 
-    private async Task<Empleado> Cargar(int id, CancellationToken ct)
+    private async Task<Empleado> CargarAsync(int id, CancellationToken ct)
     {
-        var empleado = await _context.Set<Empleado>().FirstOrDefaultAsync(e => e.Id == id, ct);
-        if (empleado == null)
-            throw new NoEncontradoException("Empleado no encontrado.");
-
-        return empleado;
+        return await context.Set<Empleado>().FirstOrDefaultAsync(e => e.Id == id, ct)
+            ?? throw new NoEncontradoException("Empleado no encontrado.");
     }
 
-    private async Task PrepararRoles()
+    private async Task PrepararRolesAsync()
     {
         foreach (var rol in RolesImportNet.Todos)
         {
-            if (!await _roles.RoleExistsAsync(rol))
-                Exigir(await _roles.CreateAsync(new IdentityRole(rol)));
+            if (!await roles.RoleExistsAsync(rol))
+                Exigir(await roles.CreateAsync(new IdentityRole(rol)));
         }
     }
 
@@ -210,10 +205,8 @@ internal sealed class AdministracionEmpleados : IAdministracionEmpleados
         empleado.Area = datos.Area;
     }
 
-    private static bool EsDuplicado(DbUpdateException ex)
-    {
-        return ex.InnerException is PostgresException { SqlState: "23505" or "23503" };
-    }
+    private static bool EsDuplicado(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: "23505" or "23503" };
 
     private static void Exigir(IdentityResult result)
     {

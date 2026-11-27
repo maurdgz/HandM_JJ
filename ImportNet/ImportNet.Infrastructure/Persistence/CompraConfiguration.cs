@@ -18,7 +18,6 @@ internal sealed class CompraConfiguration : IEntityTypeConfiguration<Compra>
         e.Property(x => x.TipoCambio).HasPrecision(18, 6);
         e.Property(x => x.FletePen).HasPrecision(18, 2);
         e.Property(x => x.AduanaPen).HasPrecision(18, 2);
-        e.Property(x => x.Version).IsRowVersion();
         e.HasIndex(x => new { x.Fecha, x.Id });
         e.HasIndex(x => new { x.Estado, x.Fecha }).HasDatabaseName("IX_Compra_EstadoFecha");
         e.HasMany(x => x.Lineas).WithOne().HasForeignKey(x => x.CompraId).IsRequired();

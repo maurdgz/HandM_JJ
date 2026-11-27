@@ -5,18 +5,12 @@ namespace ImportNet.Application.UseCases.Terceros;
 
 public sealed record EliminarProveedorCommand(int Id) : IRequest;
 
-internal sealed class EliminarProveedorCommandHandler : IRequestHandler<EliminarProveedorCommand>
+internal sealed class EliminarProveedorCommandHandler(IUnitOfWork unitOfWork)
+    : IRequestHandler<EliminarProveedorCommand>
 {
-    private readonly IUnitOfWork _unitOfWork;
-
-    public EliminarProveedorCommandHandler(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task Handle(EliminarProveedorCommand request, CancellationToken cancellationToken)
     {
-        await _unitOfWork.Proveedores.EliminarProveedor(request.Id, cancellationToken);
-        await _unitOfWork.Guardar(cancellationToken);
+        await unitOfWork.Proveedores.EliminarProveedorAsync(request.Id, cancellationToken);
+        await unitOfWork.GuardarAsync(cancellationToken);
     }
 }

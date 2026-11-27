@@ -1,4 +1,5 @@
 using ImportNet.Application.UseCases.Reportes;
+using ImportNet.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,75 +9,74 @@ namespace ImportNet.API.Controllers.Api;
 [ApiController]
 [Route("api/reportes")]
 [Authorize(Policy = "Ventas")]
-public class ReportesController : ControllerBase
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
+public sealed class ReportesController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public ReportesController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
-    [HttpGet("dashboard")]
-    [Authorize(Policy = "Administracion")]
+    [HttpGet("dashboard"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(ResumenDashboard), StatusCodes.Status200OK)]
     public async Task<IActionResult> Dashboard(CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(new ResumenDashboardQuery(), ct));
-    }
+        => Ok(await mediator.Send(new ResumenDashboardQuery(), ct));
 
-    [HttpGet("ventas-por-periodo")]
-    [Authorize(Policy = "Administracion")]
-    public async Task<IActionResult> VentasPorPeriodo(DateOnly? desde = null, DateOnly? hasta = null, string agrupacion = "Dia",
+    [HttpGet("ventas-por-periodo"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(IReadOnlyList<VentasPorPeriodo>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> VentasPorPeriodo(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        [FromQuery] string agrupacion = "Dia",
         CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new VentasPorPeriodoQuery(desde, hasta, agrupacion), ct));
-    }
+        => Ok(await mediator.Send(new VentasPorPeriodoQuery(desde, hasta, agrupacion), ct));
 
-    [HttpGet("ventas-por-vendedor")]
-    [Authorize(Policy = "Administracion")]
-    public async Task<IActionResult> VentasPorVendedor(DateOnly? desde = null, DateOnly? hasta = null, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new VentasPorVendedorQuery(desde, hasta), ct));
-    }
+    [HttpGet("ventas-por-vendedor"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(IReadOnlyList<VentasPorVendedor>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> VentasPorVendedor(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new VentasPorVendedorQuery(desde, hasta), ct));
 
-    [HttpGet("top-productos")]
-    [Authorize(Policy = "Administracion")]
-    public async Task<IActionResult> TopProductos(DateOnly? desde = null, DateOnly? hasta = null, int top = 10, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new TopProductosQuery(desde, hasta, top), ct));
-    }
+    [HttpGet("top-productos"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(IReadOnlyList<TopProducto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> TopProductos(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        [FromQuery] int top = 10,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new TopProductosQuery(desde, hasta, top), ct));
 
-    [HttpGet("margen-productos")]
-    [Authorize(Policy = "Administracion")]
-    public async Task<IActionResult> MargenProductos(DateOnly? desde = null, DateOnly? hasta = null, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new MargenPorProductoQuery(desde, hasta), ct));
-    }
+    [HttpGet("margen-productos"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(IReadOnlyList<MargenProducto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> MargenProductos(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new MargenPorProductoQuery(desde, hasta), ct));
 
-    [HttpGet("stock-bajo")]
-    [Authorize(Policy = "Administracion")]
+    [HttpGet("stock-bajo"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(IReadOnlyList<ProductoStockBajo>), StatusCodes.Status200OK)]
     public async Task<IActionResult> StockBajo(CancellationToken ct)
-    {
-        return Ok(await _mediator.Send(new StockBajoMinimoQuery(), ct));
-    }
+        => Ok(await mediator.Send(new StockBajoMinimoQuery(), ct));
 
-    [HttpGet("cierre-caja")]
-    [Authorize(Policy = "Administracion")]
-    public async Task<IActionResult> CierreCaja(DateOnly? fecha = null, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new CierreCajaQuery(fecha), ct));
-    }
+    [HttpGet("cierre-caja"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(CierreCaja), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CierreCaja(
+        [FromQuery] DateOnly? fecha = null,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new CierreCajaQuery(fecha), ct));
 
     [HttpGet("mi-resumen")]
-    public async Task<IActionResult> MiResumen(DateOnly? fecha = null, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new MiResumenDiarioQuery(fecha), ct));
-    }
+    [ProducesResponseType(typeof(CierreCaja), StatusCodes.Status200OK)]
+    public async Task<IActionResult> MiResumen(
+        [FromQuery] DateOnly? fecha = null,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new MiResumenDiarioQuery(fecha), ct));
 
-    [HttpGet("compras-por-proveedor")]
-    [Authorize(Policy = "Administracion")]
-    public async Task<IActionResult> ComprasPorProveedor(DateOnly? desde = null, DateOnly? hasta = null, CancellationToken ct = default)
-    {
-        return Ok(await _mediator.Send(new ComprasPorProveedorQuery(desde, hasta), ct));
-    }
+    [HttpGet("compras-por-proveedor"), Authorize(Policy = "Administracion")]
+    [ProducesResponseType(typeof(IReadOnlyList<ComprasPorProveedor>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ComprasPorProveedor(
+        [FromQuery] DateOnly? desde = null,
+        [FromQuery] DateOnly? hasta = null,
+        CancellationToken ct = default)
+        => Ok(await mediator.Send(new ComprasPorProveedorQuery(desde, hasta), ct));
 }

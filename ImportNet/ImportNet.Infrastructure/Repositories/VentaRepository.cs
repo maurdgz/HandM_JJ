@@ -5,19 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class VentaRepository : IVentaRepository
+internal sealed class VentaRepository(AppDbContext context) : IVentaRepository
 {
-    private readonly AppDbContext _context;
-
-    public VentaRepository(AppDbContext context)
+    public async Task<Pagina<ResumenVenta>> HistorialAsync(
+        DateTime? desdeUtc,
+        DateTime? hastaUtc,
+        int? empleadoId,
+        int pagina,
+        int tamano,
+        CancellationToken ct = default)
     {
-        _context = context;
-    }
-
-    public async Task<Pagina<ResumenVenta>> Historial(DateTime? desdeUtc, DateTime? hastaUtc, int? empleadoId,
-        int pagina, int tamano, CancellationToken ct)
-    {
-        var query = _context.Set<Venta>().AsNoTracking();
+        var query = context.Set<Venta>().AsNoTracking();
 
         if (desdeUtc != null)
             query = query.Where(v => v.Fecha >= desdeUtc);
@@ -31,13 +29,23 @@ internal sealed class VentaRepository : IVentaRepository
         var count = await query.CountAsync(ct);
 
         var ventas = await query
-            .Include(v => v.Empleado)
-            .Include(v => v.Cliente)
-            .Include(v => v.Detalles)
             .OrderByDescending(v => v.Fecha)
             .ThenByDescending(v => v.Id)
             .Skip((pagina - 1) * tamano)
             .Take(tamano)
+            .Select(v => new
+            {
+                v.Id,
+                v.Numero,
+                v.Fecha,
+                v.Estado,
+                v.EmpleadoId,
+                EmpleadoNombre = v.Empleado.Nombre,
+                EmpleadoApellidos = v.Empleado.Apellidos,
+                ClienteNombre = v.Cliente == null ? "Cliente varios" : v.Cliente.Nombre,
+                Lineas = v.Detalles.Count,
+                v.Total
+            })
             .ToListAsync(ct);
 
         var items = ventas
@@ -47,18 +55,18 @@ internal sealed class VentaRepository : IVentaRepository
                 v.Fecha,
                 v.Estado.ToString(),
                 v.EmpleadoId,
-                (v.Empleado.Nombre + " " + v.Empleado.Apellidos).Trim(),
-                v.Cliente == null ? "Cliente varios" : v.Cliente.Nombre,
-                v.Detalles.Count,
+                (v.EmpleadoNombre + " " + v.EmpleadoApellidos).Trim(),
+                v.ClienteNombre,
+                v.Lineas,
                 v.Total))
             .ToList();
 
         return new Pagina<ResumenVenta>(items, count, pagina, tamano);
     }
 
-    public async Task<NotaVenta?> Nota(int ventaId, CancellationToken ct)
+    public async Task<NotaVenta?> ObtenerNotaAsync(int ventaId, CancellationToken ct = default)
     {
-        var venta = await _context.Set<Venta>()
+        var venta = await context.Set<Venta>()
             .AsNoTracking()
             .Include(v => v.Empleado)
             .Include(v => v.Cliente)
@@ -90,8 +98,8 @@ internal sealed class VentaRepository : IVentaRepository
             venta.EmpleadoId,
             (venta.Empleado.Nombre + " " + venta.Empleado.Apellidos).Trim(),
             venta.Cliente == null ? "" : venta.Cliente.TipoDocumento.ToString().ToUpperInvariant(),
-            venta.Cliente == null ? "" : venta.Cliente.NumeroDocumento,
-            venta.Cliente == null ? "Cliente varios" : venta.Cliente.Nombre,
+            venta.Cliente?.NumeroDocumento ?? "",
+            venta.Cliente?.Nombre ?? "Cliente varios",
             venta.Subtotal,
             venta.Descuento,
             venta.Total,
@@ -100,21 +108,16 @@ internal sealed class VentaRepository : IVentaRepository
             lineas);
     }
 
-    public Task<Venta?> ObtenerConDetalles(int ventaId, CancellationToken ct)
-    {
-        return _context.Set<Venta>()
+    public Task<Venta?> ObtenerConDetallesAsync(int ventaId, CancellationToken ct = default)
+        => context.Set<Venta>()
             .Include(v => v.Detalles.OrderBy(d => d.Id))
             .FirstOrDefaultAsync(v => v.Id == ventaId, ct);
-    }
 
-    public async Task<int> SiguienteNumero(CancellationToken ct)
+    public async Task<int> SiguienteNumeroAsync(CancellationToken ct = default)
     {
-        var ultimo = await _context.Set<Venta>().MaxAsync(v => (int?)v.Numero, ct);
+        var ultimo = await context.Set<Venta>().MaxAsync(v => (int?)v.Numero, ct);
         return (ultimo ?? 0) + 1;
     }
 
-    public void Agregar(Venta venta)
-    {
-        _context.Set<Venta>().Add(venta);
-    }
+    public void Agregar(Venta venta) => context.Set<Venta>().Add(venta);
 }

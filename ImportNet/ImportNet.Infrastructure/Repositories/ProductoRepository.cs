@@ -5,23 +5,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class ProductoRepository : GenericRepository<Producto>, IProductoRepository
+internal sealed class ProductoRepository(AppDbContext context)
+    : GenericRepository<Producto>(context), IProductoRepository
 {
-    public ProductoRepository(AppDbContext context) : base(context)
-    {
-    }
-
-    public override async Task<IReadOnlyList<Producto>> Listar(CancellationToken ct)
-    {
-        return await _dbSet
+    public override async Task<IReadOnlyList<Producto>> ListarAsync(CancellationToken ct = default)
+        => await _dbSet
             .AsNoTracking()
             .OrderBy(p => p.Nombre)
             .ThenBy(p => p.Codigo)
             .ToListAsync(ct);
-    }
 
-    public async Task<Pagina<Producto>> Buscar(string? texto, int? categoriaId, bool stockBajo, int pagina, int tamano,
-        bool? activo, CancellationToken ct)
+    public async Task<Pagina<Producto>> BuscarAsync(
+        string? texto,
+        int? categoriaId,
+        bool stockBajo,
+        int pagina,
+        int tamano,
+        bool? activo,
+        CancellationToken ct = default)
     {
         var query = _dbSet.AsNoTracking();
 
@@ -52,25 +53,27 @@ internal sealed class ProductoRepository : GenericRepository<Producto>, IProduct
         return new Pagina<Producto>(items, count, pagina, tamano);
     }
 
-    public Task<bool> ExisteCodigo(string codigo, int excluirId, CancellationToken ct)
+    public async Task<IReadOnlyDictionary<int, Producto>> ObtenerPorIdsAsync(
+        IReadOnlyCollection<int> ids,
+        CancellationToken ct = default)
     {
-        return _dbSet.AnyAsync(p => p.Codigo == codigo && p.Id != excluirId, ct);
+        if (ids.Count == 0)
+            return new Dictionary<int, Producto>();
+
+        return await _dbSet
+            .Where(p => ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, ct);
     }
 
-    public async Task<bool> TieneReferencias(int id, CancellationToken ct)
+    public Task<bool> ExisteCodigoAsync(string codigo, int excluirId, CancellationToken ct = default)
+        => _dbSet.AnyAsync(p => p.Codigo == codigo && p.Id != excluirId, ct);
+
+    public async Task<bool> TieneReferenciasAsync(int id, CancellationToken ct = default)
     {
-        if (await _context.Set<Inventario>().AnyAsync(i => i.ProductoId == id, ct))
-            return true;
-
-        if (await _context.Set<MovimientoInventario>().AnyAsync(m => m.ProductoId == id, ct))
-            return true;
-
-        if (await _context.Set<DetalleCompra>().AnyAsync(d => d.ProductoId == id, ct))
-            return true;
-
-        if (await _context.Set<DetalleVenta>().AnyAsync(d => d.ProductoId == id, ct))
-            return true;
-
-        return await _context.Set<ProveedorProducto>().AnyAsync(pp => pp.ProductoId == id, ct);
+        return await _context.Set<Inventario>().AnyAsync(i => i.ProductoId == id, ct)
+            || await _context.Set<MovimientoInventario>().AnyAsync(m => m.ProductoId == id, ct)
+            || await _context.Set<DetalleCompra>().AnyAsync(d => d.ProductoId == id, ct)
+            || await _context.Set<DetalleVenta>().AnyAsync(d => d.ProductoId == id, ct)
+            || await _context.Set<ProveedorProducto>().AnyAsync(pp => pp.ProductoId == id, ct);
     }
 }

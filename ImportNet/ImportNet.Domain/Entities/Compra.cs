@@ -1,12 +1,10 @@
+using ImportNet.Domain.Common;
+using ImportNet.Domain.Exceptions;
+
 namespace ImportNet.Domain.Entities;
 
-public enum EstadoCompra { Borrador, Recibida }
-
-public sealed record LineaCompra(int ProductoId, decimal Cantidad, decimal CostoUnitarioUsd);
-
-public sealed class Compra
+public sealed class Compra : Entity
 {
-    public int Id { get; private set; }
     public int ProveedorId { get; private set; }
     public DateTime Fecha { get; private set; }
     public decimal TipoCambio { get; private set; }
@@ -88,45 +86,5 @@ public sealed class Compra
     {
         if (importe < 0 || importe > 1000000000000m || decimal.Round(importe, 2) != importe)
             throw new ReglaNegocioException("Gastos PEN no negativos, hasta 1 billon y 2 decimales.");
-    }
-}
-
-public sealed class DetalleCompra
-{
-    public int Id { get; private set; }
-    public int CompraId { get; private set; }
-    public int Orden { get; private set; }
-    public int ProductoId { get; private set; }
-    public decimal Cantidad { get; private set; }
-    public decimal CostoUnitarioUsd { get; private set; }
-    public decimal MercaderiaPen { get; private set; }
-    public decimal FletePen { get; private set; }
-    public decimal AduanaPen { get; private set; }
-
-    public decimal TotalPen => MercaderiaPen + FletePen + AduanaPen;
-    public decimal CostoUnitarioPuestoPen => TotalPen / Cantidad;
-    public decimal SubtotalUsd => Cantidad * CostoUnitarioUsd;
-
-    private DetalleCompra()
-    {
-    }
-
-    internal DetalleCompra(int orden, int productoId, decimal cantidad, decimal costoUnitarioUsd)
-    {
-        if (productoId <= 0 || cantidad <= 0 || cantidad > 1000000 || decimal.Round(cantidad, 3) != cantidad
-            || costoUnitarioUsd <= 0 || costoUnitarioUsd > 1000000 || decimal.Round(costoUnitarioUsd, 4) != costoUnitarioUsd)
-            throw new ReglaNegocioException("Producto valido, cantidad positiva (3 decimales) y costo USD positivo (4 decimales), hasta un millon.");
-
-        Orden = orden;
-        ProductoId = productoId;
-        Cantidad = cantidad;
-        CostoUnitarioUsd = costoUnitarioUsd;
-    }
-
-    internal void AsignarCostos(CostoLineaImportacion costo)
-    {
-        MercaderiaPen = costo.MercaderiaPen;
-        FletePen = costo.FletePen;
-        AduanaPen = costo.AduanaPen;
     }
 }

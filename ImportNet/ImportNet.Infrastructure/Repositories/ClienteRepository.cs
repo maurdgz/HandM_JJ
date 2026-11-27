@@ -1,24 +1,19 @@
 using ImportNet.Domain.Entities;
+using ImportNet.Domain.Exceptions;
 using ImportNet.Domain.Interfaces;
 using ImportNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class ClienteRepository : IClienteRepository
+internal sealed class ClienteRepository(AppDbContext context)
+    : GenericRepository<Cliente>(context), IClienteRepository
 {
-    private readonly AppDbContext _context;
-
-    public ClienteRepository(AppDbContext context)
+    public async Task<IReadOnlyList<Cliente>> ListarAsync(string? texto, CancellationToken ct = default)
     {
-        _context = context;
-    }
+        var query = _dbSet.AsNoTracking();
 
-    public async Task<IReadOnlyList<Cliente>> Clientes(string? texto, CancellationToken ct)
-    {
-        var query = _context.Set<Cliente>().AsNoTracking();
-
-        if (texto != null)
+        if (!string.IsNullOrWhiteSpace(texto))
         {
             var busqueda = texto.ToLower();
             query = query.Where(c => c.Nombre.ToLower().Contains(busqueda) || c.NumeroDocumento.Contains(texto));
@@ -31,36 +26,21 @@ internal sealed class ClienteRepository : IClienteRepository
             .ToListAsync(ct);
     }
 
-    public Task<Cliente?> Cliente(int id, CancellationToken ct)
-    {
-        return _context.Set<Cliente>().FirstOrDefaultAsync(c => c.Id == id, ct);
-    }
+    public Task<Cliente?> BuscarPorDocumentoAsync(string documento, CancellationToken ct = default)
+        => _dbSet.AsNoTracking().FirstOrDefaultAsync(c => c.NumeroDocumento == documento, ct);
 
-    public Task<Cliente?> BuscarPorDocumento(string documento, CancellationToken ct)
-    {
-        return _context.Set<Cliente>().AsNoTracking().FirstOrDefaultAsync(c => c.NumeroDocumento == documento, ct);
-    }
+    public Task<bool> DocumentoExisteAsync(string documento, int excluirId, CancellationToken ct = default)
+        => _dbSet.AnyAsync(c => c.NumeroDocumento == documento && c.Id != excluirId, ct);
 
-    public Task<bool> DocumentoExiste(string documento, int excluirId, CancellationToken ct)
+    public async Task EliminarClienteAsync(int id, CancellationToken ct = default)
     {
-        return _context.Set<Cliente>().AnyAsync(c => c.NumeroDocumento == documento && c.Id != excluirId, ct);
-    }
-
-    public void AgregarCliente(Cliente cliente)
-    {
-        _context.Set<Cliente>().Add(cliente);
-    }
-
-    public async Task EliminarCliente(int id, CancellationToken ct)
-    {
-        var cliente = await Cliente(id, ct);
-        if (cliente == null)
-            throw new NoEncontradoException("Cliente no encontrado.");
+        var cliente = await ObtenerPorIdAsync(id, ct)
+            ?? throw new NoEncontradoException("Cliente no encontrado.");
 
         var tieneVentas = await _context.Set<Venta>().AnyAsync(v => v.ClienteId == id, ct);
         if (cliente.NumeroDocumento == "00000000" || tieneVentas)
             throw new ConflictoException("Cliente reservado o con ventas.");
 
-        _context.Set<Cliente>().Remove(cliente);
+        Eliminar(cliente);
     }
 }

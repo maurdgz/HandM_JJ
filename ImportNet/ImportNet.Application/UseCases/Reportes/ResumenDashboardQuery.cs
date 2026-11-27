@@ -7,25 +7,17 @@ namespace ImportNet.Application.UseCases.Reportes;
 
 public sealed record ResumenDashboardQuery : IRequest<ResumenDashboard>;
 
-internal sealed class ResumenDashboardQueryHandler : IRequestHandler<ResumenDashboardQuery, ResumenDashboard>
+internal sealed class ResumenDashboardQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
+    : IRequestHandler<ResumenDashboardQuery, ResumenDashboard>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUsuarioActual _actor;
-
-    public ResumenDashboardQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
-    {
-        _unitOfWork = unitOfWork;
-        _actor = actor;
-    }
-
     public async Task<ResumenDashboard> Handle(ResumenDashboardQuery request, CancellationToken cancellationToken)
     {
-        await _actor.ExigirAdministrador(cancellationToken);
+        await actor.ExigirAdministradorAsync(cancellationToken);
 
         var hoy = FechasPeru.Hoy();
         var dia = PeriodoReporte.Dia(hoy);
         var inicioMes = FechasPeru.InicioDelDiaUtc(new DateOnly(hoy.Year, hoy.Month, 1));
 
-        return await _unitOfWork.Reportes.Dashboard(hoy, dia.DesdeUtc, dia.HastaUtc, inicioMes, cancellationToken);
+        return await unitOfWork.Reportes.DashboardAsync(hoy, dia.DesdeUtc, dia.HastaUtc, inicioMes, cancellationToken);
     }
 }

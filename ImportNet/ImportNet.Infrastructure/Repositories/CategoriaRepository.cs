@@ -5,24 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class CategoriaRepository : GenericRepository<Categoria>, ICategoriaRepository
+internal sealed class CategoriaRepository(AppDbContext context)
+    : GenericRepository<Categoria>(context), ICategoriaRepository
 {
-    public CategoriaRepository(AppDbContext context) : base(context)
-    {
-    }
+    public override async Task<IReadOnlyList<Categoria>> ListarAsync(CancellationToken ct = default)
+        => await _dbSet.AsNoTracking().OrderBy(c => c.Nombre).ToListAsync(ct);
 
-    public override async Task<IReadOnlyList<Categoria>> Listar(CancellationToken ct)
-    {
-        return await _dbSet.AsNoTracking().OrderBy(c => c.Nombre).ToListAsync(ct);
-    }
+    public Task<bool> ExisteNombreAsync(string nombreNormalizado, int excluirId, CancellationToken ct = default)
+        => _dbSet.AnyAsync(c => c.NombreNormalizado == nombreNormalizado && c.Id != excluirId, ct);
 
-    public Task<bool> ExisteNombre(string nombreNormalizado, int excluirId, CancellationToken ct)
-    {
-        return _dbSet.AnyAsync(c => c.NombreNormalizado == nombreNormalizado && c.Id != excluirId, ct);
-    }
-
-    public Task<bool> TieneProductos(int id, CancellationToken ct)
-    {
-        return _context.Set<Producto>().AnyAsync(p => p.CategoriaId == id, ct);
-    }
+    public Task<bool> TieneProductosAsync(int id, CancellationToken ct = default)
+        => _context.Set<Producto>().AnyAsync(p => p.CategoriaId == id, ct);
 }

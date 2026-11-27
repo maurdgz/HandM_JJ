@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+artifacts
+**/bin
+**/obj
+**/node_modules
+**/dist
+ImportNet/ImportNet.API/wwwroot
+ImportNet/ImportNet.Tests
+*.user
+*.suo
+.DS_Store

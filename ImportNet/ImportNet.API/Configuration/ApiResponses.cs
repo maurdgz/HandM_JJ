@@ -1,3 +1,4 @@
+using ImportNet.API.Middleware;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImportNet.API.Configuration;
@@ -6,17 +7,8 @@ public static class ApiResponses
 {
     public static IApplicationBuilder UseApiResponses(this IApplicationBuilder app)
     {
-        app.Use(async (context, next) =>
-        {
-            context.Response.Headers.XContentTypeOptions = "nosniff";
-            context.Response.Headers.XFrameOptions = "DENY";
-            context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-
-            if (context.Request.Path.StartsWithSegments("/api"))
-                context.Response.Headers.CacheControl = "no-store";
-
-            await next(context);
-        });
+        app.UseMiddleware<RequestLoggingMiddleware>();
+        app.UseMiddleware<SecurityHeadersMiddleware>();
 
         return app.UseStatusCodePages(async statusContext =>
         {
@@ -25,17 +17,25 @@ public static class ApiResponses
                 return;
 
             var status = http.Response.StatusCode;
-            var titulo = "No se pudo completar la solicitud.";
-            if (status == 401) titulo = "Debe iniciar sesión con una cuenta válida.";
-            if (status == 403) titulo = "No tiene permiso para realizar esta acción.";
-            if (status == 404) titulo = "No se encontró el recurso solicitado.";
-            if (status == 405) titulo = "Método no permitido.";
+            var titulo = status switch
+            {
+                401 => "Debe iniciar sesión con una cuenta válida.",
+                403 => "No tiene permiso para realizar esta acción.",
+                404 => "No se encontró el recurso solicitado.",
+                405 => "Método no permitido.",
+                _ => "No se pudo completar la solicitud."
+            };
 
             var problemas = http.RequestServices.GetRequiredService<IProblemDetailsService>();
-            await problemas.WriteAsync(new ProblemDetailsContext
+            await problemas.TryWriteAsync(new ProblemDetailsContext
             {
                 HttpContext = http,
-                ProblemDetails = new ProblemDetails { Status = status, Title = titulo }
+                ProblemDetails = new ProblemDetails
+                {
+                    Status = status,
+                    Title = titulo,
+                    Extensions = { ["traceId"] = http.TraceIdentifier }
+                }
             });
         });
     }

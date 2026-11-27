@@ -13,8 +13,8 @@ public static class RolesImportNet
 public interface IUsuarioActual
 {
     string? Id { get; }
-    Task ExigirAdministrador(CancellationToken ct);
-    Task<bool> EsAdministrador(CancellationToken ct);
+    Task ExigirAdministradorAsync(CancellationToken ct = default);
+    Task<bool> EsAdministradorAsync(CancellationToken ct = default);
 }
 
 public sealed class AccesoNoPermitidoException : Exception
@@ -30,12 +30,13 @@ public sealed class AccesoNoPermitidoException : Exception
 
 public static class EmpleadoActualExtensions
 {
-    public static async Task<Empleado> ObtenerEmpleadoActivo(this IEmpleadoRepository empleados, IUsuarioActual usuario, CancellationToken ct)
+    public static async Task<Empleado> ObtenerEmpleadoActivoAsync(this IEmpleadoRepository empleados,
+        IUsuarioActual usuario, CancellationToken ct = default)
     {
         if (usuario.Id == null)
             throw new AccesoNoPermitidoException(401);
 
-        var empleado = await empleados.ObtenerPorUsuario(usuario.Id, ct);
+        var empleado = await empleados.ObtenerPorUsuarioAsync(usuario.Id, ct);
         if (empleado == null || !empleado.Activo)
             throw new AccesoNoPermitidoException(403);
 

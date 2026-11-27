@@ -1,6 +1,6 @@
 namespace ImportNet.Domain.Interfaces;
 
-public interface IUnitOfWork
+public interface IUnitOfWork : IDisposable, IAsyncDisposable
 {
     ICompraRepository Compras { get; }
     IClienteRepository Clientes { get; }
@@ -11,8 +11,9 @@ public interface IUnitOfWork
     IMovimientoRepository Movimientos { get; }
     IReporteRepository Reportes { get; }
     IVentaRepository Ventas { get; }
+    IEmpleadoRepository Empleados { get; }
 
-    Task<int> Guardar(CancellationToken ct);
+    Task<int> GuardarAsync(CancellationToken ct = default);
 
-    Task<T> EjecutarEnTransaccion<T>(Func<CancellationToken, Task<T>> operacion, CancellationToken ct);
+    Task<T> EjecutarEnTransaccionAsync<T>(Func<CancellationToken, Task<T>> operacion, CancellationToken ct = default);
 }

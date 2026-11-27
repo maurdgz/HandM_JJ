@@ -5,37 +5,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImportNet.Infrastructure.Repositories;
 
-internal sealed class CompraRepository : ICompraRepository
+internal sealed class CompraRepository(AppDbContext context)
+    : GenericRepository<Compra>(context), ICompraRepository
 {
-    private readonly AppDbContext _context;
-
-    public CompraRepository(AppDbContext context)
-    {
-        _context = context;
-    }
-
-    public void Agregar(Compra compra)
-    {
-        _context.Set<Compra>().Add(compra);
-    }
-
     public void MarcarEdicion(Compra compra)
     {
         compra.ExigirBorrador();
         _context.Entry(compra).Property(c => c.TipoCambio).IsModified = true;
     }
 
-    public void Eliminar(Compra compra)
+    public new void Eliminar(Compra compra)
     {
         compra.ExigirBorrador();
-        _context.Set<Compra>().Remove(compra);
+        base.Eliminar(compra);
     }
 
-    public async Task<Pagina<Compra>> Listar(int pagina, int tamano, CancellationToken ct)
+    public async Task<Pagina<Compra>> ListarAsync(int pagina, int tamano, CancellationToken ct = default)
     {
-        var count = await _context.Set<Compra>().CountAsync(ct);
+        var count = await _dbSet.CountAsync(ct);
 
-        var items = await _context.Set<Compra>()
+        var items = await _dbSet
             .AsNoTracking()
             .Include(c => c.Lineas.OrderBy(l => l.Orden))
             .OrderByDescending(c => c.Fecha)
@@ -47,10 +36,8 @@ internal sealed class CompraRepository : ICompraRepository
         return new Pagina<Compra>(items, count, pagina, tamano);
     }
 
-    public Task<Compra?> Obtener(int id, CancellationToken ct)
-    {
-        return _context.Set<Compra>()
+    public Task<Compra?> ObtenerConLineasAsync(int id, CancellationToken ct = default)
+        => _dbSet
             .Include(c => c.Lineas.OrderBy(l => l.Orden))
             .FirstOrDefaultAsync(c => c.Id == id, ct);
-    }
 }
