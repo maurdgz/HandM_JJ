@@ -18,7 +18,7 @@ export default function VentasMesChart({ datos }: { datos: VentasPeriodo[] }) {
             <XAxis dataKey="periodo" tickFormatter={mes} tickLine={false} axisLine={false} minTickGap={20} />
             <YAxis width={64} tickLine={false} axisLine={false} tickFormatter={v => cantidad(Number(v))} label={{ value: "PEN", position: "insideTopLeft", offset: -2 }} />
             <ChartTooltip content={<ChartTooltipContent formatter={v => pen(Number(v))} labelFormatter={v => mes(String(v))} />} />
-            <Area dataKey="total" type="linear" stroke="var(--color-total)" fill="var(--color-total)" fillOpacity={0.12} strokeWidth={2} isAnimationActive={false} />
+            <Area dataKey="total" type="linear" stroke="var(--color-total)" fill="var(--color-total)" fillOpacity={0.12} strokeWidth={2} dot={{ r: 3, fill: "var(--color-total)" }} isAnimationActive={false} />
           </AreaChart>
         </ChartContainer>
         <details className="mt-4 text-sm"><summary className="cursor-pointer text-slate-600">Ver datos por mes</summary>
