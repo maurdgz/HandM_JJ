@@ -60,3 +60,17 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 }
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  .no-print,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+}
