@@ -1,17 +1,29 @@
-using MediatR;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Categorias.Commands;
+
 public sealed record CreateCategoriaCommand(string Nombre) : IRequest<int>;
-internal sealed class CreateCategoriaCommandHandler(IUnitOfWork uow) : IRequestHandler<CreateCategoriaCommand, int>
+
+internal sealed class CreateCategoriaCommandHandler : IRequestHandler<CreateCategoriaCommand, int>
 {
-    public async Task<int> Handle(CreateCategoriaCommand r, CancellationToken ct)
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateCategoriaCommandHandler(IUnitOfWork unitOfWork)
     {
-        var entidad = new Categoria(r.Nombre);
-        if (await uow.Categorias.ExisteNombre(entidad.NombreNormalizado, entidad.Id, ct))
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<int> Handle(CreateCategoriaCommand request, CancellationToken cancellationToken)
+    {
+        var categoria = new Categoria(request.Nombre);
+
+        if (await _unitOfWork.Categorias.ExisteNombre(categoria.NombreNormalizado, categoria.Id, cancellationToken))
             throw new ConflictoException("Ya existe una categoría con ese nombre.");
-        uow.Categorias.Agregar(entidad);
-        await uow.Guardar(ct);
-        return entidad.Id;
+
+        _unitOfWork.Categorias.Agregar(categoria);
+        await _unitOfWork.Guardar(cancellationToken);
+        return categoria.Id;
     }
 }

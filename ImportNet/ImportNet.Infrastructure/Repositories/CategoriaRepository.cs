@@ -13,10 +13,7 @@ internal sealed class CategoriaRepository : GenericRepository<Categoria>, ICateg
 
     public override async Task<IReadOnlyList<Categoria>> Listar(CancellationToken ct)
     {
-        return await _dbSet
-            .AsNoTracking()
-            .OrderBy(c => c.Nombre)
-            .ToListAsync(ct);
+        return await _dbSet.AsNoTracking().OrderBy(c => c.Nombre).ToListAsync(ct);
     }
 
     public Task<bool> ExisteNombre(string nombreNormalizado, int excluirId, CancellationToken ct)

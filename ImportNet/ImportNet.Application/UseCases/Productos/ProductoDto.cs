@@ -3,13 +3,53 @@ using ImportNet.Domain.Entities;
 
 namespace ImportNet.Application.UseCases.Productos;
 
-public sealed record ProductoDto(int Id, string Codigo, string Nombre, string? Descripcion, string UnidadMedida,
-    decimal? Peso, decimal PrecioVenta, string? PartidaArancelaria, int CategoriaId, decimal StockMinimo, bool Activo,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] decimal? CostoPromedio,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] decimal? CostoImportacionUsd,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] decimal? TipoCambioImportacion)
+public sealed class ProductoDto
 {
-    public static ProductoDto Desde(Producto p, bool verCostos) => new(p.Id, p.Codigo, p.Nombre, p.Descripcion,
-        p.UnidadMedida, p.Peso, p.PrecioVenta, p.PartidaArancelaria, p.CategoriaId, p.StockMinimo, p.Activo,
-        verCostos ? p.CostoPromedio : null, verCostos ? p.CostoImportacionUsd : null, verCostos ? p.TipoCambioImportacion : null);
+    public int Id { get; set; }
+    public string Codigo { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string? Descripcion { get; set; }
+    public string UnidadMedida { get; set; } = "";
+    public decimal? Peso { get; set; }
+    public decimal PrecioVenta { get; set; }
+    public string? PartidaArancelaria { get; set; }
+    public int CategoriaId { get; set; }
+    public decimal StockMinimo { get; set; }
+    public bool Activo { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? CostoPromedio { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? CostoImportacionUsd { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? TipoCambioImportacion { get; set; }
+
+    public static ProductoDto Desde(Producto p, bool verCostos)
+    {
+        var dto = new ProductoDto
+        {
+            Id = p.Id,
+            Codigo = p.Codigo,
+            Nombre = p.Nombre,
+            Descripcion = p.Descripcion,
+            UnidadMedida = p.UnidadMedida,
+            Peso = p.Peso,
+            PrecioVenta = p.PrecioVenta,
+            PartidaArancelaria = p.PartidaArancelaria,
+            CategoriaId = p.CategoriaId,
+            StockMinimo = p.StockMinimo,
+            Activo = p.Activo
+        };
+
+        if (verCostos)
+        {
+            dto.CostoPromedio = p.CostoPromedio;
+            dto.CostoImportacionUsd = p.CostoImportacionUsd;
+            dto.TipoCambioImportacion = p.TipoCambioImportacion;
+        }
+
+        return dto;
+    }
 }

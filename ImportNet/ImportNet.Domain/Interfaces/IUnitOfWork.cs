@@ -3,7 +3,6 @@ namespace ImportNet.Domain.Interfaces;
 public interface IUnitOfWork
 {
     ICompraRepository Compras { get; }
-    ITercerosRepository Terceros { get; }
     IClienteRepository Clientes { get; }
     IProveedorRepository Proveedores { get; }
     ICategoriaRepository Categorias { get; }
@@ -15,7 +14,5 @@ public interface IUnitOfWork
 
     Task<int> Guardar(CancellationToken ct);
 
-    Task<T> EjecutarEnTransaccion<T>(
-        Func<CancellationToken, Task<T>> operacion,
-        CancellationToken ct);
+    Task<T> EjecutarEnTransaccion<T>(Func<CancellationToken, Task<T>> operacion, CancellationToken ct);
 }

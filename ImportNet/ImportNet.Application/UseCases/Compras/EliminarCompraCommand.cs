@@ -1,13 +1,27 @@
-using MediatR;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Compras;
+
 public sealed record EliminarCompraCommand(int Id) : IRequest;
-internal sealed class EliminarCompraCommandHandler(IUnitOfWork uow) : IRequestHandler<EliminarCompraCommand>
+
+internal sealed class EliminarCompraCommandHandler : IRequestHandler<EliminarCompraCommand>
 {
-    public async Task Handle(EliminarCompraCommand r, CancellationToken ct)
+    private readonly IUnitOfWork _unitOfWork;
+
+    public EliminarCompraCommandHandler(IUnitOfWork unitOfWork)
     {
-        var c = await uow.Compras.Obtener(r.Id, ct) ?? throw new NoEncontradoException("Compra no encontrada.");
-        c.ExigirBorrador(); uow.Compras.Eliminar(c); await uow.Guardar(ct);
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task Handle(EliminarCompraCommand request, CancellationToken cancellationToken)
+    {
+        var compra = await _unitOfWork.Compras.Obtener(request.Id, cancellationToken);
+        if (compra == null)
+            throw new NoEncontradoException("Compra no encontrada.");
+
+        _unitOfWork.Compras.Eliminar(compra);
+        await _unitOfWork.Guardar(cancellationToken);
     }
 }

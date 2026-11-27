@@ -1,6 +1,5 @@
 namespace ImportNet.Domain.Entities;
 
-/// <summary>Importes netos en PEN; fechas comerciales en Perú. Margen al costo promedio vigente.</summary>
 public sealed record ResumenDashboard(
     DateOnly Fecha,
     decimal VentasHoy,

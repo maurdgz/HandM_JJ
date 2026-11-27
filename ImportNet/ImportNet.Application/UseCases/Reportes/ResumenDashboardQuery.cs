@@ -7,15 +7,25 @@ namespace ImportNet.Application.UseCases.Reportes;
 
 public sealed record ResumenDashboardQuery : IRequest<ResumenDashboard>;
 
-internal sealed class ResumenDashboardQueryHandler(IDashboardRepository dashboard, IUsuarioActual actor)
-    : IRequestHandler<ResumenDashboardQuery, ResumenDashboard>
+internal sealed class ResumenDashboardQueryHandler : IRequestHandler<ResumenDashboardQuery, ResumenDashboard>
 {
-    public async Task<ResumenDashboard> Handle(ResumenDashboardQuery request, CancellationToken ct)
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IUsuarioActual _actor;
+
+    public ResumenDashboardQueryHandler(IUnitOfWork unitOfWork, IUsuarioActual actor)
     {
-        await actor.ExigirAdministrador(ct);
-        var hoy = PeriodoReporte.Hoy();
+        _unitOfWork = unitOfWork;
+        _actor = actor;
+    }
+
+    public async Task<ResumenDashboard> Handle(ResumenDashboardQuery request, CancellationToken cancellationToken)
+    {
+        await _actor.ExigirAdministrador(cancellationToken);
+
+        var hoy = FechasPeru.Hoy();
         var dia = PeriodoReporte.Dia(hoy);
-        var mes = PeriodoReporte.Desde(new DateOnly(hoy.Year, hoy.Month, 1), hoy);
-        return await dashboard.Resumen(hoy, dia.DesdeUtc, dia.HastaUtc, mes.DesdeUtc, ct);
+        var inicioMes = FechasPeru.InicioDelDiaUtc(new DateOnly(hoy.Year, hoy.Month, 1));
+
+        return await _unitOfWork.Reportes.Dashboard(hoy, dia.DesdeUtc, dia.HastaUtc, inicioMes, cancellationToken);
     }
 }

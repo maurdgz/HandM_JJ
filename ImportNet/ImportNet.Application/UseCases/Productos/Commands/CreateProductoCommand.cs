@@ -1,21 +1,36 @@
-using MediatR;
 using ImportNet.Domain.Entities;
 using ImportNet.Domain.Interfaces;
+using MediatR;
+
 namespace ImportNet.Application.UseCases.Productos.Commands;
-public sealed record CreateProductoCommand(string Codigo, string Nombre, string? Descripcion, string UnidadMedida, decimal? Peso, decimal PrecioVenta, string? PartidaArancelaria, int CategoriaId, decimal StockMinimo,
+
+public sealed record CreateProductoCommand(string Codigo, string Nombre, string? Descripcion, string UnidadMedida, decimal? Peso,
+    decimal PrecioVenta, string? PartidaArancelaria, int CategoriaId, decimal StockMinimo,
     decimal? CostoImportacionUsd = null, decimal? TipoCambioImportacion = null) : IRequest<int>;
-internal sealed class CreateProductoCommandHandler(IUnitOfWork uow) : IRequestHandler<CreateProductoCommand, int>
+
+internal sealed class CreateProductoCommandHandler : IRequestHandler<CreateProductoCommand, int>
 {
-    public async Task<int> Handle(CreateProductoCommand r, CancellationToken ct)
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateProductoCommandHandler(IUnitOfWork unitOfWork)
     {
-        var entidad = new Producto(r.Codigo, r.Nombre, r.Descripcion, r.UnidadMedida, r.Peso, r.PrecioVenta, r.PartidaArancelaria, r.CategoriaId, r.StockMinimo);
-        entidad.RegistrarCostoImportacion(r.CostoImportacionUsd, r.TipoCambioImportacion);
-        if (!await uow.Categorias.Existe(r.CategoriaId, ct))
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<int> Handle(CreateProductoCommand request, CancellationToken cancellationToken)
+    {
+        var producto = new Producto(request.Codigo, request.Nombre, request.Descripcion, request.UnidadMedida, request.Peso,
+            request.PrecioVenta, request.PartidaArancelaria, request.CategoriaId, request.StockMinimo);
+        producto.RegistrarCostoImportacion(request.CostoImportacionUsd, request.TipoCambioImportacion);
+
+        if (!await _unitOfWork.Categorias.Existe(request.CategoriaId, cancellationToken))
             throw new ReglaNegocioException("La categoría no existe.");
-        if (await uow.Productos.ExisteCodigo(entidad.Codigo, entidad.Id, ct))
+
+        if (await _unitOfWork.Productos.ExisteCodigo(producto.Codigo, producto.Id, cancellationToken))
             throw new ConflictoException("Ya existe un producto con ese código.");
-        uow.Productos.Agregar(entidad);
-        await uow.Guardar(ct);
-        return entidad.Id;
+
+        _unitOfWork.Productos.Agregar(producto);
+        await _unitOfWork.Guardar(cancellationToken);
+        return producto.Id;
     }
 }
