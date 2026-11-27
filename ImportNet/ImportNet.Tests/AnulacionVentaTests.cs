@@ -110,7 +110,7 @@ public sealed class AnulacionVentaTests
                 ruta, new { motivo = "   " })).StatusCode);
 
         Assert.Equal(
-            HttpStatusCode.NoContent,
+            HttpStatusCode.OK,
             (await admin.PostAsJsonAsync(ruta, motivo)).StatusCode);
 
         Assert.Equal(

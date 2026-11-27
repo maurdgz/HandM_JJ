@@ -38,9 +38,19 @@ En Linux o macOS usar npm en lugar de npm.cmd. dist, .astro, node_modules, .env 
 ## Rutas y sesión
 
 - /login inicia sesión con JWT; token, vencimiento y roles se guardan en sessionStorage.
-- /empleados solo para Administrador. El menú se adapta al rol; los permisos reales los impone la API.
+- /empleados solo para Administrador. El menú se adapta al rol; si el Vendedor fuerza la URL, la pantalla consulta la API y muestra Acceso denegado por su 403, conservando la sesión. El diálogo de edición permanece abierto mientras guarda.
 - /ventas conserva el POS; /historial consulta por fechas y pagina; /nota?id=... permite imprimir la nota. /ventas/historial y /ventas/nota?id=... son accesos compatibles a esas mismas pantallas.
 - Catálogos, compras, stock y kardex mantienen los permisos de sus endpoints.
 - src/lib/api.ts adjunta Bearer y, al recibir 401, limpia la sesión y redirige a login. Un 403 muestra el error sin cerrar la sesión.
 
 Detalles y pruebas: [Día 12](../docs/DIA-12-VENTAS.md) y [Día 16](../docs/DIA-16-SEGURIDAD.md).
+
+La prueba opcional `FrontendBrowserTests` comprueba login, CRUD de empleados, bloqueo del diálogo durante guardado, estados de carga/error/vacío, 403 real del Vendedor, sesión por pestaña, logout y cierre por 401. Preparar wwwroot con el script antes de ejecutarla. Usa Kestrel con SQLite temporal y el build real; no inicia servidores Astro. Requiere Python con Playwright y Chrome local:
+
+```powershell
+$env:IMPORTNET_BROWSER_TESTS = '1'
+dotnet test ../../ImportNet.sln --configuration Release --filter 'FullyQualifiedName~FrontendBrowserTests'
+Remove-Item Env:IMPORTNET_BROWSER_TESTS
+```
+
+Se puede indicar otro Python mediante IMPORTNET_PYTHON y Chromium instalado con IMPORTNET_BROWSER_CHANNEL=chromium. Las credenciales sintéticas se pasan por stdin.

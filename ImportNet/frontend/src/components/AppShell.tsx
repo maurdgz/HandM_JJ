@@ -184,11 +184,7 @@ export default function AppShell({ view }: Props) {
 
         {view === "nota" && <NotaVentaPage admin={isAdmin} />}
 
-        {view === "empleados" && (
-          isAdmin
-            ? <EmpleadosPage />
-            : <p role="alert">Acceso restringido.</p>
-        )}
+        {view === "empleados" && <EmpleadosPage />}
 
         {view === "stock" && (
           puedeLeerStock
