@@ -1,6 +1,7 @@
 """Astro + API + PostgreSQL in an isolated test schema. Credentials only via stdin."""
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -17,7 +18,7 @@ evidence.mkdir(exist_ok=True)
 with socket.socket() as sock:
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
-url = f"http://127.0.0.1:{port}"
+url = data["apiUrl"].rstrip("/") if data["singleHost"] else f"http://127.0.0.1:{port}"
 env = dict(os.environ, API_URL=data["apiUrl"].rstrip("/"))
 stage = "startup"
 started = False
@@ -58,10 +59,11 @@ def venta_ui(page, producto, cliente=False):
 
 
 try:
-    result = subprocess.run(["node", astro, "dev", "--background", "--host", "127.0.0.1", "--port", str(port)],
-                            cwd=frontend, env=env, capture_output=True, timeout=45)
-    started = result.returncode == 0
-    assert started
+    if not data["singleHost"]:
+        result = subprocess.run(["node", astro, "dev", "--background", "--host", "127.0.0.1", "--port", str(port)],
+                                cwd=frontend, env=env, capture_output=True, timeout=45)
+        started = result.returncode == 0
+        assert started
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -71,7 +73,7 @@ try:
         expect.set_options(timeout=30000)
         stage = "anonymous redirect"
         page.goto(url, wait_until="domcontentloaded")
-        expect(page).to_have_url(url + "/login")
+        expect(page).to_have_url(re.compile(re.escape(url) + r"/login/?$"))
         stage = "admin login and initial data"
         login(page, data["admin"])
         expect(page.get_by_role("heading", name="Dashboard", exact=True)).to_be_visible()
@@ -100,6 +102,12 @@ try:
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         page.screenshot(path=str(evidence / "dashboard-mobile.png"), full_page=True)
         page.set_viewport_size({"width": 1440, "height": 1000})
+        stage = "single month remains visible and excludes previous months"
+        with page.expect_response(lambda r: "/reportes/ventas-por-periodo?" in r.url) as pending:
+            page.get_by_role("combobox", name="Periodo de los gráficos").click()
+            page.get_by_role("option", name="Este mes", exact=True).click()
+        assert len(pending.value.json()) == 1 and pending.value.json()[0]["total"] == 95
+        expect(page.locator("circle.recharts-dot")).to_have_count(1)
         stage = "annulled sale excluded and stock restored"
         respuesta = request(page, "POST", f"/ventas/{venta['id']}/anulacion", {"motivo": "Verificación de dashboard"})
         assert respuesta["status"] == 200
@@ -133,7 +141,8 @@ try:
         assert "/api/reportes/dashboard" in swagger["paths"]
         assert swagger["components"]["securitySchemes"]["Bearer"]["scheme"] == "bearer"
         assert not errors
-        print("Dashboard Chrome + Astro + PostgreSQL: KPI, gráficos, periodo, móvil, cliente, POS, anulación, roles, error/reintento y Swagger correctos.")
+        modo = "un solo host" if data["singleHost"] else "Astro dev + proxy"
+        print(f"Dashboard Chrome + PostgreSQL ({modo}): KPI, gráficos, periodo, móvil, cliente, POS, anulación, roles, error/reintento y Swagger correctos.")
         browser.close()
 except Exception:
     print(f"Dashboard browser failed at {stage}", file=sys.stderr)

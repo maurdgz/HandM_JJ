@@ -11,7 +11,12 @@ namespace ImportNet.Tests;
 public sealed class DashboardBrowserTests
 {
     [BrowserFact, Trait("Browser", "Chrome"), Trait("Database", "PostgreSQL")]
-    public async Task Astro_PosDashboardRolesPeriodosYEstados_ContraPostgreSql()
+    public Task Astro_PosDashboardRolesPeriodosYEstados_ContraPostgreSql() => Ejecutar(false);
+
+    [BrowserFact, Trait("Browser", "Chrome"), Trait("Database", "PostgreSQL")]
+    public Task UnSoloHost_PosDashboardYPermisos_ContraPostgreSql() => Ejecutar(true);
+
+    private static async Task Ejecutar(bool singleHost)
     {
         using var factory = new DashboardPostgreSqlFactory();
         using var client = TestSupport.CreateKestrelClient(factory);
@@ -36,7 +41,7 @@ public sealed class DashboardBrowserTests
         start.ArgumentList.Add(script);
         using var process = Process.Start(start)!;
         await process.StandardInput.WriteAsync(JsonSerializer.Serialize(new {
-            apiUrl = client.BaseAddress!.ToString(), admin = new { email = admin.Email, password = admin.Password },
+            singleHost, apiUrl = client.BaseAddress!.ToString(), admin = new { email = admin.Email, password = admin.Password },
             seller = new { email = seller.Email, password = seller.Password }, producto, segundo
         }));
         process.StandardInput.Close();
