@@ -46,3 +46,5 @@ node_modules/
 dist/
 .npm-cache/
 .local-tools/
+# Astro compilado para el host de la API
+/ImportNet/ImportNet.API/wwwroot/

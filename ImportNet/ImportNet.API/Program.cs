@@ -62,6 +62,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 else { app.UseHsts(); app.UseHttpsRedirection(); }
+app.UseFrontend();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();

@@ -30,6 +30,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ImportNet/frontend/package-lock.json
+      - name: Preparar frontend para la API
+        shell: pwsh
+        run: ./ImportNet/scripts/Preparar-Frontend.ps1
       - run: dotnet restore ImportNet.sln
       - run: dotnet build ImportNet.sln --no-restore --configuration Release
       - run: dotnet test ImportNet.sln --no-build --configuration Release
+      - run: dotnet publish ImportNet/ImportNet.API --no-build --configuration Release --output artifacts/api
