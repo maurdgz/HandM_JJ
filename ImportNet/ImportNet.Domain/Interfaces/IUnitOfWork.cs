@@ -10,6 +10,7 @@ public interface IUnitOfWork
     IProductoRepository Productos { get; }
     IInventarioRepository Inventarios { get; }
     IMovimientoRepository Movimientos { get; }
+    IVentaRepository Ventas { get; }
 
     Task<int> Guardar(CancellationToken ct);
 

@@ -153,7 +153,9 @@ internal sealed class MovimientoRepository(
             return $"Compra #{compra}";
 
         if (ventaNumero is { } venta)
-            return $"Venta N° {venta}";
+            return tipo == TipoMovimiento.Entrada
+                ? $"Anulación venta N° {venta}"
+                : $"Venta N° {venta}";
 
         if (tipo == TipoMovimiento.Ajuste && motivo is { } ajuste)
             return $"Ajuste: {AjusteInventario.Etiqueta(ajuste)}";
