@@ -1,6 +1,6 @@
 ﻿# Estado
 
-Actualizado: 15/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10–26/11/2026). Evidencia de recuperación y compras en [Día 07](DIA-07-COMPRAS.md).
+Actualizado: 27/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10–26/11/2026). Estado de la rama local `feat/ventas-dia12`, integrada con main hasta `58d4502`; los nuevos commits de Días 12 y 16 aún no se enviaron a GitHub.
 
 | Día | Fecha | Responsable | Módulo | Estado |
 | --- | --- | --- | --- | --- |
@@ -11,15 +11,15 @@ Actualizado: 15/11/2026. Referencia: plan de desarrollo v2 (periodo técnico 10�
 | 05 | 13/11 | Huber Lope | Catálogo con búsqueda y paginación | Recuperado sobre el CRUD existente |
 | 06 | 14/11 | José Carlos Vitorino | Proveedores y clientes | Recuperado sobre entidades y mapeos existentes |
 | 07 | 15/11 | Mauricio Rodríguez | Compras de importación (borrador) y costo puesto en tienda | Implementado y probado; recepción fuera de alcance |
-| 08 | 16/11 | José Luis Tincopa Paz | Recepción de compra e inventario | Implementado y probado en rama local el 20/11; pendiente de publicar e integrar |
-| 09 | 17/11 | Huber Lope | Ajustes de inventario y kardex | Pendiente |
+| 08 | 16/11 | José Luis Tincopa Paz | Recepción de compra e inventario | Integrado en main mediante PR #11 |
+| 09 | 17/11 | Huber Lope | Ajustes de inventario y kardex | Integrado en main mediante PR #12 |
 | 10 | 18/11 | José Carlos Vitorino | QA intermedio: compras, inventario y roles | Pendiente |
-| 11 | 19/11 | Mauricio Rodríguez | Punto de venta (POS) | Pendiente |
-| 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Pendiente |
+| 11 | 19/11 | Mauricio Rodríguez | Punto de venta (POS) | Integrado en main mediante PR #9 |
+| 12 | 20/11 | José Luis Tincopa | Historial, nota de venta y anulación | Implementado y probado localmente; pendiente de push y PR |
 | 13 | 21/11 | Huber Lope | Reportes con LINQ | Pendiente |
 | 14 | 22/11 | José Carlos Vitorino | Pantallas de reportes y exportación a Excel | Pendiente |
 | 15 | 23/11 | Mauricio Rodríguez | Dashboard con gráficos | Pendiente |
-| 16 | 24/11 | José Luis Tincopa | Endurecimiento de seguridad y frontend servido por la API | Pendiente |
+| 16 | 24/11 | José Luis Tincopa | Endurecimiento de seguridad y frontend servido por la API | Implementado y probado localmente; pendiente de push y PR |
 | 17 | 25/11 | Huber Lope | Datos semilla y despliegue local | Pendiente |
 | 18 | 26/11 | José Carlos Vitorino | QA de cierre y versión candidata | Pendiente |
 
@@ -41,13 +41,21 @@ Incluye recepción transaccional de compras, actualización del costo promedio
 ponderado, entradas vinculadas a compras, protección contra duplicados y
 concurrencia, consulta de stock y pantallas de recepción y alertas.
 
-Última suite ordinaria comunicada: 108 pruebas, 102 correctas,
+Suite comunicada en la entrega original del Día 08: 108 pruebas, 102 correctas,
 0 fallidas y 6 omitidas. Durante la implementación también pasaron
 las dos pruebas habilitadas de concurrencia PostgreSQL.
 
 Detalle de uso, migraciones, permisos y comprobación manual:
 [Día 08: recepción e inventario](DIA-08-RECEPCION-INVENTARIO.md).
 
-Esta entrega corresponde al Día 08. No cierra los trabajos de historial,
-nota de venta y anulación del Día 12, ni los de seguridad y publicación
-del frontend del Día 16.
+La entrega original correspondía al Día 08. Los trabajos posteriores están descritos en [Día 12](DIA-12-VENTAS.md) y [Día 16](DIA-16-SEGURIDAD.md).
+
+## Entrega local de historial y seguridad
+
+Responsable: José Luis Tincopa Paz. Rama: `feat/ventas-dia12`.
+
+Incluye historial por propietario y fechas peruanas, nota imprimible, anulación transaccional con reposición única, límites de login, errores API uniformes y Astro compilado servido por ASP.NET. Conserva el POS, recepción, stock y kardex integrados por el equipo.
+
+Verificación local del 27/11: regresión de 152 pruebas aprobadas, 0 fallidas y 4 omitidas, con concurrencia real de anulación en un esquema PostgreSQL temporal. Chrome de ventas pasó por separado. Astro check y build correctos; publish incluye wwwroot y dotnet run sirve frontend y API en un mismo puerto.
+
+No se realizó push ni se abrió un PR. La integración de estos nuevos commits y la ejecución remota de CI siguen pendientes. Los días sin evidencia de cierre en esta revisión conservan su estado anterior; no se afirma que nadie esté trabajando en ellos.

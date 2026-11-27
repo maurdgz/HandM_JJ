@@ -34,4 +34,4 @@ npm.cmd --prefix ImportNet/frontend run check
 npm.cmd --prefix ImportNet/frontend run build
 ```
 
-La prueba PostgreSQL usa la conexión local de User Secrets o `ConnectionStrings__ImportNet`, exclusivamente en un servidor de loopback. El workflow .NET prepara un contenedor de PostgreSQL para ejecutarla en CI. La prueba opcional de navegador y la publicación en un solo host se comprueban junto a la entrega del Día 16.
+La prueba PostgreSQL usa la conexión local de User Secrets o `ConnectionStrings__ImportNet`, exclusivamente en un servidor de loopback. El workflow .NET prepara un contenedor de PostgreSQL para ejecutarla en CI. La prueba de Chrome para historial, nota, impresión, anulación y permisos pasó junto a la entrega del [Día 16](DIA-16-SEGURIDAD.md), que documenta cómo ejecutarla y servir el frontend en un solo host.
