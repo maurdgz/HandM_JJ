@@ -10,7 +10,7 @@ services:
     autoDeploy: true
     envVars:
       - key: ConnectionStrings__ImportNet
-        sync: false # cadena de Neon en formato Npgsql
+        sync: false # cadena de Neon tal cual (postgresql://...)
       - key: Jwt__Issuer
         value: ImportNet
       - key: Jwt__Audience

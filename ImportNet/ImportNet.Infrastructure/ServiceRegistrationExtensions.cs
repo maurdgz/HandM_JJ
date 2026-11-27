@@ -18,6 +18,8 @@ public static class ServiceRegistrationExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         var connection = config.GetConnectionString("ImportNet") ?? "Host=localhost;Database=ImportNet;Username=postgres";
+        if (connection.StartsWith("postgres://") || connection.StartsWith("postgresql://"))
+            connection = DesdeUrl(connection);
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connection));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -40,5 +42,22 @@ public static class ServiceRegistrationExtensions
 
         services.AddScoped<IPasswordHasher<ApplicationUser>, IdentityPasswordHasher>();
         return services;
+    }
+
+    // Convierte una URL de Neon/Render (postgresql://user:pass@host/db?sslmode=require) al formato de Npgsql.
+    private static string DesdeUrl(string url)
+    {
+        var uri = new Uri(url);
+        var credenciales = uri.UserInfo.Split(':', 2);
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Database = uri.AbsolutePath.Trim('/'),
+            Username = Uri.UnescapeDataString(credenciales[0]),
+            Password = credenciales.Length > 1 ? Uri.UnescapeDataString(credenciales[1]) : null,
+            SslMode = Npgsql.SslMode.Require
+        };
+        return builder.ConnectionString;
     }
 }
